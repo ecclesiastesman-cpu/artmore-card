@@ -1,0 +1,39 @@
+name: fetch-assets
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Download generated assets from CDN
+        run: |
+          set -e
+          mkdir -p game/assets_raw
+          python3 - <<'EOF'
+          import json, urllib.request, os, sys
+          urls = json.load(open('game/design/urls.json'))
+          fails = []
+          for aid, url in urls.items():
+              dst = f'game/assets_raw/{aid}.png'
+              try:
+                  urllib.request.urlretrieve(url, dst)
+                  print('ok', aid, os.path.getsize(dst))
+              except Exception as e:
+                  fails.append(aid); print('FAIL', aid, e)
+          if fails:
+              print('failed:', fails); sys.exit(1)
+          EOF
+      - name: Commit assets
+        run: |
+          git config user.name "asset-fetcher"
+          git config user.email "actions@github.com"
+          git add game/assets_raw
+          git commit -m "Fetch generated game assets from CDN" || echo "nothing to commit"
+          git push
