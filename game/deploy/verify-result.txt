@@ -4,6 +4,6 @@ sw: 200
 asset: 200
 flare_meta: 200
 flare_sheet: 200
-loot_icon: 404
-npc_sheet: 404
+loot_icon: 200
+npc_sheet: 200
 title_found: 2
