@@ -89,3 +89,29 @@ export function losClear(f, x0, y0, x1, y1) {
   }
   return true;
 }
+
+// ---- ЛАГЕРЬ (город): рукотворная площадь с костром и NPC ----
+export function genTown() {
+  const W = 16, H = 14;
+  const g = new Uint8Array(W * H); // всё стены
+  for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) g[y * W + x] = T_FLOOR;
+  // выступ-врата на юге
+  g[(H - 2) * W + 7] = T_FLOOR; g[(H - 2) * W + 8] = T_FLOOR;
+  const cx = 7.5 * 64, cy = 6.5 * 64;
+  const npcs = [
+    { kind: 'vendor', x: 4.2 * 64, y: 4.6 * 64, angle: Math.PI * .75 },
+    { kind: 'keeper', x: 11.2 * 64, y: 4.6 * 64, angle: Math.PI * .25 },
+    { kind: 'altar', x: 12.2 * 64, y: 9.2 * 64 },
+    { kind: 'gates', x: 7.5 * 64, y: 12.1 * 64 },
+  ];
+  const torches = [{ x: 7, y: 6 }, { x: 8, y: 7 }, { x: 3, y: 3 }, { x: 12, y: 3 }, { x: 3, y: 10 }, { x: 12, y: 10 }];
+  const decals = [
+    { x: cx, y: cy + 40, kind: 'crack', r: 30, a: 0, seed: 3 },
+    { x: 5 * 64, y: 9 * 64, kind: 'moss', r: 34, a: 0, seed: 7 },
+    { x: 10 * 64, y: 5 * 64, kind: 'moss', r: 26, a: 0, seed: 11 },
+  ];
+  const visited = new Uint8Array(W * H); visited.fill(1);
+  return { W, H, g, rooms: [], entry: { cx: 7, cy: 8 }, exit: { cx: -9, cy: -9 },
+    decor: [], torches, spawns: [], chests: [], decals, visited,
+    bossSpawn: null, act: 1, floorNum: 0, isBossFloor: false, town: true, npcs };
+}

@@ -206,7 +206,7 @@ export class UI {
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     for (let i = 1; i < 10; i++) ctx.fillRect(xx + xw * i / 10, xy, 1, 5);
     // верхние плашки: акт и золото
-    const actName = g.progress.rift ? `${STR.rift} ${g.progress.riftLvl}` : `${STR.acts[g.progress.act].name} · ${STR.floor} ${g.progress.floor}`;
+    const actName = g.townMode ? STR.town : g.progress.rift ? `${STR.rift} ${g.progress.riftLvl}` : `${STR.acts[g.progress.act].name} · ${STR.floor} ${g.progress.floor}`;
     ctx.font = '13px Georgia, serif';
     const anw = ctx.measureText(actName).width + 18;
     this.drawPlaque(ctx, 8, 8, anw, 24);
@@ -301,6 +301,17 @@ export class UI {
       ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3;
       ctx.strokeText(h.potionCharges, px + 16, py + 16);
       ctx.fillText(h.potionCharges, px + 16, py + 16);
+    }
+    // кнопка городского портала (в подземелье)
+    if (!g.townMode) {
+      input.addButton('tp', W - 26, 106, 20, 'townportal');
+      ctx.fillStyle = 'rgba(21,19,16,0.85)'; ctx.beginPath(); ctx.arc(W - 26, 106, 17, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#4a7ab8'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = '#7fb2ff';
+      ctx.beginPath(); ctx.ellipse(W - 26, 106, 8, 10.5, 0, 0, 7); ctx.stroke();
+      ctx.globalAlpha = .6;
+      ctx.beginPath(); ctx.ellipse(W - 26, 106, 4, 7, 0, 0, 7); ctx.stroke();
+      ctx.globalAlpha = 1;
     }
     // кнопка меню
     input.addButton('inv', W - 26, 60, 22, 'inventory');
@@ -398,7 +409,7 @@ export class UI {
     p.className = 'panel' + (this.screen === 'mainmenu' ? ' transparent' : '');
     const fn = { inventory: this.rInventory, character: this.rCharacter, talents: this.rTalents,
       town: this.rTown, vendor: this.rVendor, stash: this.rStash, death: this.rDeath, settings: this.rSettings,
-      mainmenu: this.rMainMenu, classpick: this.rClassPick }[this.screen];
+      mainmenu: this.rMainMenu, classpick: this.rClassPick, portals: this.rPortals }[this.screen];
     p.innerHTML = fn.call(this);
     this.root.appendChild(p);
     this.bindPanel(p);
@@ -578,22 +589,25 @@ export class UI {
     if (missing) setTimeout(() => { if (this.screen === 'classpick') this.render(); }, 600); // дорисуем, когда слои догрузятся
     return html;
   }
-  rTown() {
+  rTown() { // ☰ пауза-меню
     const g = this.g;
-    const acts = [1, 2, 3, 4].filter(a => a <= g.progress.unlockedActs);
-    return `<div class="tabs"><div class="h1">${STR.town}</div><button class="tab x" data-act="mainmenu">☰</button></div>
+    return `<div class="tabs"><div class="h1">${STR.town}</div><button class="tab x" data-act="close">✕</button></div>
     <div class="townbtns">
-      <button class="big" data-act="vendor">🕯 ${STR.vendor}</button>
-      <button class="big" data-act="stash">📦 ${STR.stash}</button>
-      <button class="big" data-act="tab" data-id="talents">✦ ${STR.altar}</button>
+      ${!g.townMode ? `<button class="big portal" data-act="townportal">🌀 ${STR.townPortalBtn}</button>` : ''}
+      <button class="big" data-act="tab" data-id="inventory">🎒 ${STR.inventory}</button>
       <button class="big" data-act="settings">⚙ ${STR.settings}</button>
-    </div>
-    <div class="h2">${STR.portalTo}:</div>
-    <div class="townbtns">
-      ${acts.map(a => `<button class="big portal" data-act="goact" data-id="${a}">${STR.acts[a].name}</button>`).join('')}
-      ${g.progress.cleared ? `<button class="big portal rift" data-act="gorift">🌀 ${STR.rift} ${g.progress.riftLvl}</button>` : ''}
+      <button class="big" data-act="mainmenu">☰ ${STR.mainMenuBtn}</button>
     </div>
     <div class="note">${STR.saveNote}</div>`;
+  }
+  rPortals() {
+    const g = this.g;
+    const acts = [1, 2, 3, 4].filter(a => a <= g.progress.unlockedActs);
+    return `<div class="tabs"><div class="h1">${STR.portalTo}</div><button class="tab x" data-act="close">✕</button></div>
+    <div class="townbtns">
+      ${acts.map(a => `<button class="big portal" data-act="goact" data-id="${a}">${STR.acts[a].name}${a === g.progress.act ? ` · ${STR.floor} ${g.progress.floor}` : ''}</button>`).join('')}
+      ${g.progress.cleared ? `<button class="big portal rift" data-act="gorift">🌀 ${STR.rift} ${g.progress.riftLvl}</button>` : ''}
+    </div>`;
   }
   rVendor() {
     const g = this.g, h = g.hero;
@@ -649,6 +663,7 @@ export class UI {
         case 'vendor': this.open('vendor'); break;
         case 'stash': this.open('stash'); break;
         case 'settings': this.open('settings'); break;
+        case 'townportal': this.closeScreen(); g.castTownPortal(); break;
         case 'set': g.settings[id] = !g.settings[id]; g.applySettings(); this.render(); break;
         case 'stat': if (h.statPts > 0) { h.alloc[id]++; h.statPts--; g.recalc(); this.render(); } break;
         case 'learn': if (h.talentPts > 0 && (h.talents[id] || 0) < 5) { h.talents[id] = (h.talents[id] || 0) + 1; h.talentPts--; g.recalc();

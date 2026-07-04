@@ -1,5 +1,7 @@
 // Рендер: тайлы, стены, спрайты-марионетки с экипировкой, свет, частицы, числа.
 import { TILE } from './data.js';
+import { STR } from './strings.js';
+const STRN = STR.npc;
 import { T_WALL, T_EXIT, T_ENTRY, isWall } from './world.js';
 import { clamp, lerp, proj, ISOX, ISOY } from './core.js';
 
@@ -172,6 +174,60 @@ export class Renderer {
       this.ctx.fillRect(px - 96, py - 60, 192, 156);
     }
   }
+  // NPC лагеря: собирается из слоёв Flare, имя над головой
+  drawNpc(g, n, timeS) {
+    const { ctx } = this;
+    const [px, py] = proj(n.x, n.y);
+    if (n.kind === 'gates' || n.kind === 'ret') {
+      const img = this.assets.dec_portal;
+      if (img) {
+        const pul = 1 + Math.sin(timeS * 2.5) * .07;
+        ctx.save(); ctx.translate(px, py);
+        if (n.kind === 'ret') ctx.filter = 'hue-rotate(160deg)';
+        ctx.scale(1.5, 1.15);
+        ctx.drawImage(img, -55 * pul, -80 * pul, 110 * pul, 110 * pul);
+        ctx.restore(); ctx.filter = 'none';
+      }
+    } else if (n.kind === 'altar') {
+      const id = this.tilesMeta?.groups?.pillar?.[0];
+      if (id !== undefined) this.drawAtlasTile(id, n.x - 32, n.y - 32);
+      ctx.save(); ctx.translate(px, py - 150);
+      ctx.fillStyle = `rgba(255,215,94,${.5 + Math.sin(timeS * 3) * .25})`;
+      ctx.beginPath(); ctx.arc(0, 0, 6 + Math.sin(timeS * 3) * 2, 0, 7); ctx.fill();
+      ctx.restore();
+    } else {
+      // человек: слои базы + одежда
+      const fl = g.flare;
+      const layers = n.kind === 'vendor'
+        ? ['m_default_feet', 'm_default_legs', 'm_default_hands', 'm_cloth_shirt', 'm_head_short']
+        : ['m_default_feet', 'm_default_legs', 'm_default_hands', 'm_leather_chest', 'm_leather_hood'];
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath(); ctx.ellipse(0, 5, 20, 8, 0, 0, 7); ctx.fill();
+      ctx.restore();
+      let scale = null;
+      for (const l of layers) {
+        const m = fl?.meta?.[l];
+        if (!m) continue;
+        if (scale === null) scale = 96 / (fl.meta['m_default_chest']?.ay || m.ay);
+        fl.draw(ctx, l, px, py + 5, 'stance', timeS * 1000 + n.x, n.angle ?? Math.PI / 2, scale);
+      }
+    }
+    // имя и приглашение
+    const name = ({ vendor: STRN.vendor, keeper: STRN.keeper, altar: STRN.altar, gates: STRN.gates, ret: STRN.ret })[n.kind] || '';
+    ctx.font = 'bold 13px Georgia, serif'; ctx.textAlign = 'center';
+    const ty = py - (n.kind === 'gates' || n.kind === 'ret' ? 110 : n.kind === 'altar' ? 175 : 115);
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
+    ctx.strokeText(name, px, ty);
+    ctx.fillStyle = '#ffd75e'; ctx.fillText(name, px, ty);
+    if (g.nearNpc === n || (n.kind === 'ret' && g.nearReturn)) {
+      ctx.strokeStyle = `rgba(255,215,94,${.5 + Math.sin(timeS * 5) * .3})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(px, py + 5, 34, 15, 0, 0, 7); ctx.stroke();
+    }
+  }
+
   // стоячая жаровня с живым пламенем
   drawBrazier(wx, wy, timeS) {
     const { ctx } = this;
