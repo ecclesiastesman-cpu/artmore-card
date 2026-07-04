@@ -5,7 +5,7 @@ import { makeRng, Input, bus, clamp, dist2, proj, unprojDir, isoAngle } from './
 import { genFloor, genTown, collide, T_EXIT } from './world.js';
 import { makeMob, updateMob, damageMob, damageHero, healHero, gainXp } from './entities.js';
 import { useSkill, basicAttack, autoAim, canUse } from './skills.js';
-import { makeItem, computeStats, newUid, setUidBase } from './items.js';
+import { makeItem, computeStats, newUid, setUidBase, refreshIcon } from './items.js';
 import { SETS } from './data.js';
 import { Renderer } from './render.js';
 import { UI } from './ui.js';
@@ -22,6 +22,13 @@ const ASSET_LIST = [
   'item_potion', 'item_potion2', 'item_gold', 'item_ring', 'item_amulet', 'item_belt', 'item_boots', 'item_gloves', 'item_tome',
   'tile_crypt', 'tile_catacomb', 'tile_torture', 'tile_hell',
   'dec_sarcophagus', 'dec_bones', 'dec_chest', 'dec_portal', 'title_bg',
+  // рисованные иконки предметов (лист Flare icons.png)
+  ...['hand_axe', 'battle_axe', 'great_axe', 'greatsword', 'sword', 'shortbow', 'longbow', 'greatbow',
+    'staff', 'wand', 'greatstaff', 'skull_staff', 'dagger', 'buckler', 'kite_shield', 'crest_shield', 'book2',
+    'leather_hood', 'chain_coif', 'plate_helm', 'leather_armor', 'chain_mail', 'plate_armor', 'mage_vest',
+    'leather_gloves', 'chain_gloves', 'plate_gloves', 'belt2', 'leather_boots', 'chain_boots', 'plate_boots',
+    'amu_green', 'amu_red', 'amu_blue', 'ring_silver', 'ring_gold', 'ring_ruby',
+    'coins', 'hp_flask', 'gem_red'].map(n => 'loot/' + n),
 ];
 
 class Game {
@@ -148,6 +155,10 @@ class Game {
       attackT: 0, hurtT: 0, invulnT: 0, animT: 0, dead: false, slowT: 0, hp: 1, res: 0,
     }, d.hero);
     this.stash = d.stash || [];
+    // старые сейвы: перевести иконки предметов на новые листы
+    for (const it of this.hero.inventory || []) refreshIcon(it);
+    for (const sl in this.hero.equip) refreshIcon(this.hero.equip[sl]);
+    for (const it of this.stash) refreshIcon(it);
     this.progress = d.progress;
     this.settings = Object.assign(this.settings, d.settings);
     this.seedBase = d.seedBase;
@@ -186,7 +197,7 @@ class Game {
     this.chestObjs = [];
     this.townMode = true;
     this.rebuildHeroSheet();
-    if (this.flare?.meta) this.flare.preload(['m_default_feet', 'm_default_legs', 'm_default_hands', 'm_head_short', 'm_cloth_shirt', 'm_leather_chest', 'm_leather_hood', 'm_staff']);
+    if (this.flare?.meta) this.flare.preload(['n_trader', 'n_guild', 'm_default_feet', 'm_default_legs', 'm_default_hands', 'm_head_short', 'm_cloth_shirt', 'm_leather_chest', 'm_leather_hood']);
     const [cpx, cpy] = proj(h.x, h.y);
     this.renderer.cam.px = cpx; this.renderer.cam.py = cpy;
     this.state = 'dungeon';
@@ -647,9 +658,14 @@ class Game {
     const f = this.floor;
     for (let ty = vy0; ty <= vy1; ty++) {
       for (let tx = vx0; tx <= vx1; tx++) {
-        if (f.g[ty * f.W + tx] !== 0) continue;
-        // рисуем только стены, видимые с пола
-        list.push({ kind: 'wall', tx, ty, key: (tx + ty + 1.6) * TILE });
+        const idx = ty * f.W + tx;
+        if (f.g[idx] === 0) { list.push({ kind: 'wall', tx, ty, key: (tx + ty + 1.6) * TILE }); continue; }
+        const pg = f.propAt?.get(idx);
+        if (pg) {
+          if (f.campfire && f.campfire.tx === tx && f.campfire.ty === ty)
+            list.push({ kind: 'campfire', tx, ty, key: (tx + ty + 1.2) * TILE });
+          else list.push({ kind: 'prop', pg, tx, ty, key: (tx + ty + 1.2) * TILE });
+        }
       }
     }
     for (const t of f.torches) {
@@ -687,14 +703,26 @@ class Game {
           r.ctx.save(); r.ctx.translate(px, py); r.ctx.scale(1.4, .8);
           r.ctx.drawImage(img, -42, -42, 84, 84); r.ctx.restore();
         }
-      } else if (e.kind === 'chest') {
-        const img = this.assets.dec_chest;
-        if (img) {
-          const [px, py] = proj(e.c.x, e.c.y);
-          r.ctx.globalAlpha = e.c.opened ? .45 : 1;
-          r.ctx.save(); r.ctx.translate(px, py); r.ctx.scale(1.2, .85);
-          r.ctx.drawImage(img, -30, -46, 60, 60); r.ctx.restore();
-          r.ctx.globalAlpha = 1;
+      } else if (e.kind === 'prop') r.drawProp(e.pg, e.tx, e.ty);
+      else if (e.kind === 'campfire') { r.drawProp('firepit', e.tx, e.ty); r.drawCampfire(e.tx, e.ty, timeS); }
+      else if (e.kind === 'chest') {
+        // тайл-сундук: акты 1-2 обычный, 3-4 демонический
+        const grp = f.act >= 3 ? (e.c.opened ? 'chest_d_open' : 'chest_d') : (e.c.opened ? 'chest_open' : 'chest');
+        const id = r.tilesMeta?.groups?.[grp]?.[0];
+        const ctx2 = r.ctx;
+        if (id !== undefined && r.tilesImg) {
+          if (e.c.opened) ctx2.globalAlpha = .8;
+          r.drawAtlasTile(id, e.c.x - TILE / 2, e.c.y - TILE / 2);
+          ctx2.globalAlpha = 1;
+        } else {
+          const img = this.assets.dec_chest;
+          if (img) {
+            const [px, py] = proj(e.c.x, e.c.y);
+            ctx2.globalAlpha = e.c.opened ? .45 : 1;
+            ctx2.save(); ctx2.translate(px, py); ctx2.scale(1.2, .85);
+            ctx2.drawImage(img, -30, -46, 60, 60); ctx2.restore();
+            ctx2.globalAlpha = 1;
+          }
         }
       } else if (e.kind === 'npc') r.drawNpc(this, e.n, timeS);
       else if (e.kind === 'mob') r.drawMob(this, e.m, timeS);

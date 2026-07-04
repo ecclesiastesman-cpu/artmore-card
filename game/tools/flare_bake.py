@@ -95,6 +95,10 @@ for flare_name, out in [('skeleton', 'e_skeleton'), ('skeleton_mage', 'e_skeleto
                         ('goblin', 'e_goblin'), ('antlion', 'e_antlion'), ('minotaur', 'e_minotaur')]:
     JOBS.append((flare_name, f'animations/enemies/{flare_name}.txt', out, None))
 JOBS.append(('wyvern_fire', 'animations/enemies/wyvern_fire.txt', 'e_wyvern', None))
+# --- NPC города (только stance) ---
+for flare_name, out in [('wandering_trader', 'n_trader'), ('guild_man', 'n_guild'),
+                        ('peasant_man1', 'n_peasant'), ('knight', 'n_knight')]:
+    JOBS.append((flare_name, f'animations/npcs/{flare_name}.txt', out, ['stance']))
 # --- герой: мужские слои ---
 MALE = ['default_feet', 'default_legs', 'default_hands', 'default_chest', 'head_short',
         'cloth_shirt', 'leather_chest', 'chain_cuirass', 'plate_cuirass', 'mage_vest',
