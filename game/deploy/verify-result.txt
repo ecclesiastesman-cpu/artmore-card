@@ -1,7 +1,7 @@
-url: https://lush-quartz-123.higgsfield.gg/
+url: https://ecclesiastesman-cpu.github.io/last-candle/
 status: 200
 sw: 200
 asset: 200
 flare_meta: 200
 flare_sheet: 200
-title_found: 1
+title_found: 2
