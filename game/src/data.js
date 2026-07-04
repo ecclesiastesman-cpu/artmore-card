@@ -96,20 +96,20 @@ export const SKILLS = {
 
 // ---- МОНСТРЫ ---- (hp/dmg — база 1 уровня, скалируются)
 export const MOBS = {
-  skeleton: { hp: 26, dmg: 7, speed: 95, r: 13, xp: 8, sprite: 'mob_skeleton', ai: 'melee', family: 'undead' },
-  zombie:   { hp: 48, dmg: 11, speed: 55, r: 15, xp: 10, sprite: 'mob_zombie', ai: 'melee', family: 'undead' },
-  ghoul:    { hp: 20, dmg: 6, speed: 165, r: 12, xp: 9, sprite: 'mob_ghoul', ai: 'melee', family: 'undead', lunge: true },
-  bloater:  { hp: 60, dmg: 24, speed: 50, r: 17, xp: 14, sprite: 'mob_bloater', ai: 'bomber', boomR: 90, family: 'undead' },
-  cultist:  { hp: 30, dmg: 12, speed: 80, r: 13, xp: 13, sprite: 'mob_cultist', ai: 'caster', proj: 'shadow', family: 'demon' },
-  hound:    { hp: 34, dmg: 10, speed: 185, r: 13, xp: 12, sprite: 'mob_hound', ai: 'melee', family: 'demon', lunge: true },
-  imp:      { hp: 24, dmg: 11, speed: 110, r: 11, xp: 12, sprite: 'mob_imp', ai: 'caster', proj: 'fire', family: 'demon' },
-  knight:   { hp: 110, dmg: 18, speed: 75, r: 17, xp: 22, sprite: 'mob_knight', ai: 'melee', family: 'demon' },
-  skeleton_minion: { hp: 40, dmg: 9, speed: 120, r: 12, xp: 0, sprite: 'mob_skeleton', ai: 'ally', tint: '#7fd6a0' },
-  demon_minion:    { hp: 90, dmg: 16, speed: 130, r: 13, xp: 0, sprite: 'mob_imp', ai: 'ally', tint: '#b388ff', scale: 1.25 },
-  boss_bone:        { hp: 950, dmg: 22, speed: 70, r: 26, xp: 300, sprite: 'boss_bone', ai: 'boss', boss: 1, skills: ['summon:skeleton', 'nova:cold'] },
-  boss_plague:      { hp: 1500, dmg: 26, speed: 60, r: 30, xp: 500, sprite: 'boss_plague', ai: 'boss', boss: 2, skills: ['summon:ghoul', 'zone:poison'] },
-  boss_executioner: { hp: 2300, dmg: 38, speed: 95, r: 28, xp: 800, sprite: 'boss_executioner', ai: 'boss', boss: 3, skills: ['charge', 'melee:big'] },
-  boss_abyss:       { hp: 3800, dmg: 42, speed: 85, r: 30, xp: 1500, sprite: 'boss_abyss', ai: 'boss', boss: 4, skills: ['proj:fire3', 'nova:fire', 'summon:imp'] },
+  skeleton: { hp: 26, dmg: 7, speed: 95, r: 13, xp: 8, sprite: 'mob_skeleton', flare: 'e_skeleton', ai: 'melee', family: 'undead' },
+  zombie:   { hp: 48, dmg: 11, speed: 55, r: 15, xp: 10, sprite: 'mob_zombie', flare: 'e_zombie', ai: 'melee', family: 'undead' },
+  ghoul:    { hp: 20, dmg: 6, speed: 165, r: 12, xp: 9, sprite: 'mob_ghoul', flare: 'e_goblin', ai: 'melee', family: 'undead', lunge: true },
+  bloater:  { hp: 60, dmg: 24, speed: 50, r: 17, xp: 14, sprite: 'mob_bloater', flare: 'e_zombie', fscale: 1.3, tint: '#9ccc65', ai: 'bomber', boomR: 90, family: 'undead' },
+  cultist:  { hp: 30, dmg: 12, speed: 80, r: 13, xp: 13, sprite: 'mob_cultist', flare: 'e_skeleton_mage', ai: 'caster', proj: 'shadow', family: 'demon' },
+  hound:    { hp: 34, dmg: 10, speed: 185, r: 13, xp: 12, sprite: 'mob_hound', flare: 'e_antlion', ai: 'melee', family: 'demon', lunge: true },
+  imp:      { hp: 24, dmg: 11, speed: 110, r: 11, xp: 12, sprite: 'mob_imp', flare: 'e_wyvern', fscale: .8, ai: 'caster', proj: 'fire', family: 'demon' },
+  knight:   { hp: 110, dmg: 18, speed: 75, r: 17, xp: 22, sprite: 'mob_knight', flare: 'e_minotaur', ai: 'melee', family: 'demon' },
+  skeleton_minion: { hp: 40, dmg: 9, speed: 120, r: 12, xp: 0, sprite: 'mob_skeleton', flare: 'e_skeleton', ai: 'ally', tint: '#7fd6a0' },
+  demon_minion:    { hp: 90, dmg: 16, speed: 130, r: 13, xp: 0, sprite: 'mob_imp', flare: 'e_wyvern', fscale: .8, ai: 'ally', tint: '#b388ff', scale: 1.25 },
+  boss_bone:        { hp: 950, dmg: 22, speed: 70, r: 26, xp: 300, sprite: 'boss_bone', flare: 'e_skeleton_mage', fscale: 1.8, ai: 'boss', boss: 1, skills: ['summon:skeleton', 'nova:cold'] },
+  boss_plague:      { hp: 1500, dmg: 26, speed: 60, r: 30, xp: 500, sprite: 'boss_plague', flare: 'e_zombie', fscale: 2, tint: '#9ccc65', ai: 'boss', boss: 2, skills: ['summon:ghoul', 'zone:poison'] },
+  boss_executioner: { hp: 2300, dmg: 38, speed: 95, r: 28, xp: 800, sprite: 'boss_executioner', flare: 'e_minotaur', fscale: 1.5, ai: 'boss', boss: 3, skills: ['charge', 'melee:big'] },
+  boss_abyss:       { hp: 3800, dmg: 42, speed: 85, r: 30, xp: 1500, sprite: 'boss_abyss', flare: 'e_wyvern', fscale: 1.6, tint: '#ff7043', ai: 'boss', boss: 4, skills: ['proj:fire3', 'nova:fire', 'summon:imp'] },
 };
 export const MOB_SCALE = lvl => ({ hp: Math.pow(1.17, lvl - 1), dmg: Math.pow(1.115, lvl - 1), xp: Math.pow(1.09, lvl - 1) });
 

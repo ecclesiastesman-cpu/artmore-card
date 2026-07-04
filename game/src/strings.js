@@ -60,6 +60,7 @@ export const STR = {
   floor: 'Этаж', enter: 'Войти', touchHintMove: 'Левый палец — движение', touchHintSkills: 'Правый — атака и умения',
   settings: 'Настройки', sound: 'Звук', shake: 'Тряска экрана', textSize: 'Крупный текст', flash: 'Вспышки',
   saveNote: 'Игра сохраняется сама. Работает без интернета.',
+  credits: 'Графика персонажей и монстров: проект Flare — Clint Bellanger, Justin Nichol и команда (CC-BY-SA 3.0). Спасибо за свободное искусство.',
   offlineReady: 'Игра скачана: можно играть без сети',
   mobNames: {
     skeleton: 'Скелет-воин', zombie: 'Гниющий труп', ghoul: 'Гуль', bloater: 'Раздутый труп',

@@ -156,9 +156,10 @@ export class UI {
     this.root.querySelector('.panel')?.remove();
     if (!this.screen) return;
     const p = document.createElement('div');
-    p.className = 'panel';
+    p.className = 'panel' + (this.screen === 'mainmenu' ? ' transparent' : '');
     const fn = { inventory: this.rInventory, character: this.rCharacter, talents: this.rTalents,
-      town: this.rTown, vendor: this.rVendor, stash: this.rStash, death: this.rDeath, settings: this.rSettings }[this.screen];
+      town: this.rTown, vendor: this.rVendor, stash: this.rStash, death: this.rDeath, settings: this.rSettings,
+      mainmenu: this.rMainMenu, classpick: this.rClassPick }[this.screen];
     p.innerHTML = fn.call(this);
     this.root.appendChild(p);
     this.bindPanel(p);
@@ -271,10 +272,30 @@ export class UI {
         </div>`;
       }).join('')}</div>`).join('')}</div>`;
   }
+  rMainMenu() {
+    const { hasSave, loadGame } = this.g.saveApi;
+    const saved = hasSave() ? loadGame() : null;
+    const info = saved ? `${STR.classes[saved.hero.cls]?.name || ''} · ${STR.level} ${saved.hero.level}` : '';
+    return `<div class="menuwrap">
+      <div class="menuspacer"></div>
+      ${saved ? `<button class="big menubtn" data-act="continue">▶ ${STR.continueGame}<div class="sub">${info}</div></button>` : ''}
+      <button class="big menubtn" data-act="newgame">${saved ? '✚ ' : '▶ '}${STR.newGame}</button>
+      ${this.confirmWipe ? `<div class="warn">${STR.confirmDelete}
+        <button data-act="classpick">${STR.yes}</button><button data-act="mainmenu">${STR.no}</button></div>` : ''}
+      <div class="credits">${STR.credits}</div>
+    </div>`;
+  }
+  rClassPick() {
+    return `<div class="tabs"><div class="h1">${STR.chooseClass}</div><button class="tab x" data-act="mainmenu">←</button></div>
+    <div class="townbtns">
+      ${Object.keys(CLASSES).map(k => `<button class="big classbtn" data-act="pickclass" data-id="${k}">
+        <b>${STR.classes[k].name}</b><div class="sub">${STR.classes[k].desc}</div></button>`).join('')}
+    </div>`;
+  }
   rTown() {
     const g = this.g;
     const acts = [1, 2, 3, 4].filter(a => a <= g.progress.unlockedActs);
-    return `<div class="tabs"><div class="h1">${STR.town}</div><button class="tab x" data-act="close">✕</button></div>
+    return `<div class="tabs"><div class="h1">${STR.town}</div><button class="tab x" data-act="mainmenu">☰</button></div>
     <div class="townbtns">
       <button class="big" data-act="vendor">🕯 ${STR.vendor}</button>
       <button class="big" data-act="stash">📦 ${STR.stash}</button>
@@ -332,6 +353,14 @@ export class UI {
       switch (act) {
         case 'close': this.closeScreen(); break;
         case 'tab': this.open(id); break;
+        case 'mainmenu': this.confirmWipe = false; g.state = 'title'; this.open('mainmenu'); break;
+        case 'continue': g.doContinue(); break;
+        case 'newgame':
+          if (g.saveApi.hasSave()) { this.confirmWipe = true; this.render(); }
+          else this.open('classpick');
+          break;
+        case 'classpick': this.confirmWipe = false; this.open('classpick'); break;
+        case 'pickclass': g.doNewGame(id); break;
         case 'town': this.open('town'); break;
         case 'vendor': this.open('vendor'); break;
         case 'stash': this.open('stash'); break;

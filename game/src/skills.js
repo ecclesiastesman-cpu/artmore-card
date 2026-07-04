@@ -33,6 +33,8 @@ export function useSkill(g, id, aimX, aimY) {
   const nx = dx / d, ny = dy / d;
   const dmg = skillDmg(g, sk, rank);
   h.attackT = .22; h.dir = nx < 0 ? -1 : 1;
+  h.faceAngle = Math.atan2(ny, nx);
+  h.action = { name: sk.kind === 'melee' || sk.kind === 'dash' ? 'swing' : (g.cls.weapons.includes('bow') ? 'shoot' : 'cast'), t: 0 };
   bus.emit('skill', sk, id);
 
   switch (sk.kind) {
@@ -169,6 +171,9 @@ export function basicAttack(g, aimX, aimY) {
   const wpn = h.equip.weapon;
   const dx = aimX - h.x, dy = aimY - h.y, d = Math.hypot(dx, dy) || 1;
   h.dir = dx < 0 ? -1 : 1; h.attackT = .2;
+  h.faceAngle = Math.atan2(dy, dx);
+  const isRangedA = wpn?.ranged || (wpn?.caster && (h.cls === 'mage' || h.cls === 'warlock'));
+  h.action = { name: h.form ? 'swing' : isRangedA ? (wpn?.ranged ? 'shoot' : 'cast') : 'swing', t: 0 };
   if (cls.resOnHit) h.res = Math.min(s.maxRes, h.res + cls.resOnHit);
   bus.emit('attack', h);
   const dmgRoll = () => g.rng.range(s.wDmg[0], s.wDmg[1]) * (1 + s[cls.gain.dmgStat] * .012) * (1 + s.dmgMul) + s.dmgFlat;

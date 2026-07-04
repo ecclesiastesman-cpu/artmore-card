@@ -92,10 +92,46 @@ export class Renderer {
     }
   }
 
-  // марионетка героя: тело + доспех + шлем + оружие/щит, процедурная анимация
+  // трупы (анимация смерти + затухание)
+  drawCorpses(g) {
+    const { ctx } = this;
+    for (const c of g.corpses) {
+      const fm = g.flare?.meta?.[c.flare];
+      if (!fm) continue;
+      const fscale = (c.r * 5.4 / fm.ay) * (c.fscale || 1);
+      const alpha = c.t < 2.5 ? 1 : Math.max(0, 1 - (c.t - 2.5) / 1.5);
+      g.flare.draw(ctx, c.flare, c.x, c.y + 4, 'die', c.t * 1000, c.angle, fscale, alpha);
+    }
+  }
+
+  // герой: анимированная кукла Flare (слои экипировки); формы друида — статичный спрайт
   drawHero(g, timeS) {
     const { ctx } = this;
     const h = g.hero;
+    if (!h.form && g.flare?.heroSheet) {
+      const s = g.flare.heroSheet;
+      const fscale = 88 / s.meta.ay;
+      ctx.save();
+      ctx.translate(h.x, h.y);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath(); ctx.ellipse(0, 5, 17, 7, 0, 0, 7); ctx.fill();
+      if (h.hurtT > 0) ctx.globalAlpha = .6 + Math.sin(timeS * 60) * .3;
+      const anim = h.dead ? 'die' : h.action ? h.action.name : h.moving ? 'run' : 'stance';
+      const t = h.dead ? h.deadT * 1000 : h.action ? h.action.t : h.animT * 1000;
+      // редкость оружия — свечение под ногами
+      const wr = h.equip.weapon?.rarity;
+      if (wr && wr !== 'common' && wr !== 'magic') {
+        ctx.save();
+        ctx.globalAlpha = .35 + Math.sin(timeS * 4) * .12;
+        ctx.strokeStyle = ({ rare: '#ffd75e', set: '#61d97a', unique: '#ff9840' })[wr];
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, 5, 20, 8.5, 0, 0, 7); ctx.stroke();
+        ctx.restore();
+      }
+      g.flare.drawHeroSheet(ctx, 0, 5, anim, t, h.faceAngle ?? Math.PI / 2, fscale);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+      return;
+    }
     const spriteKey = h.form === 'wolf' ? 'form_wolf' : h.form === 'bear' ? 'form_bear' : g.cls.sprite;
     const img = this.assets[spriteKey];
     const size = (h.form === 'bear' ? 78 : 64) * 1.55;
@@ -146,24 +182,40 @@ export class Renderer {
 
   drawMob(g, m, timeS) {
     const { ctx } = this;
-    const img = this.assets[m.sprite];
     const size = m.r * 4.6;
-    const bob = Math.sin(m.animT * 7) * (m.moving ? 2.5 : .6);
     ctx.save();
     ctx.translate(m.x, m.y);
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath(); ctx.ellipse(0, size * .34, size * .27, size * .1, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 4, m.r * 1.2, m.r * .45, 0, 0, 7); ctx.fill();
     if (m.elite) { // аура элитки
       ctx.strokeStyle = m.tint; ctx.globalAlpha = .5 + Math.sin(timeS * 5) * .2;
-      ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, size * .3, size * .32, 0, 7); ctx.stroke();
+      ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 4, m.r * 1.4, 0, 7); ctx.stroke();
       ctx.globalAlpha = 1;
     }
-    ctx.scale(m.dir * (m.scale || 1), (m.scale || 1));
-    if (m.hitT > 0) ctx.globalAlpha = .55;
+    if (m.hitT > 0) ctx.globalAlpha = .62;
     if (m.freezeT > 0) { ctx.filter = 'saturate(0.3) brightness(1.3)'; }
-    const src = (img && m.tint) ? this.tinted(img, m.tint, .4) : img;
-    if (src) ctx.drawImage(src, -size / 2, -size * .58 + bob, size, size);
-    else { ctx.fillStyle = m.tint || '#813'; ctx.fillRect(-m.r, -m.r, m.r * 2, m.r * 2); }
+    let drawn = false;
+    if (m.flare && g.flare) {
+      const fm = g.flare.meta?.[m.flare];
+      if (fm) {
+        const fscale = (m.r * 5.4 / fm.ay) * (m.fscale || 1);
+        const anim = m.action ? m.action.name : m.moving ? 'run' : 'stance';
+        const t = m.action ? m.action.t : m.animT * 1000;
+        drawn = g.flare.draw(ctx, m.flare, 0, 4, anim, t, m.angle, fscale);
+        if (drawn && m.tint && m.type === 'ally') { // метка слуги
+          ctx.fillStyle = m.tint; ctx.globalAlpha = .9;
+          ctx.beginPath(); ctx.arc(0, -fm.ay * fscale - 7, 3.2, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+        }
+      }
+    }
+    if (!drawn) {
+      const img = this.assets[m.sprite];
+      const bob = Math.sin(m.animT * 7) * (m.moving ? 2.5 : .6);
+      ctx.scale(m.dir * (m.scale || 1), (m.scale || 1));
+      const src = (img && m.tint) ? this.tinted(img, m.tint, .4) : img;
+      if (src) ctx.drawImage(src, -size / 2, -size * .58 + bob, size, size);
+      else { ctx.fillStyle = m.tint || '#813'; ctx.fillRect(-m.r, -m.r, m.r * 2, m.r * 2); }
+    }
     ctx.restore();
     ctx.filter = 'none'; ctx.globalAlpha = 1;
     if (m.hp < m.maxHp && !m.boss) { // полоска HP

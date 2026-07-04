@@ -11,6 +11,7 @@ import { Renderer } from './render.js';
 import { UI } from './ui.js';
 import { Sound } from './audio.js';
 import { saveGame, loadGame, wipeSave, hasSave } from './save.js';
+import { Flare, gearLayers } from './flare.js';
 
 const ASSET_LIST = [
   'hero_barbarian', 'hero_huntress', 'hero_mage', 'hero_warlock', 'hero_druid', 'form_wolf', 'form_bear',
@@ -37,9 +38,12 @@ class Game {
     this.time = 0;
     this.seedBase = (Date.now() % 100000) | 0;
     this.xpCurve = XP_CURVE;
+    this.saveApi = { hasSave, loadGame };
     this.dev = new URLSearchParams(location.search).has('dev');
   }
   async loadAssets() {
+    this.flare = new Flare();
+    const flareReady = this.flare.init();
     let done = 0;
     const jobs = ASSET_LIST.map(id => new Promise(res => {
       const img = new Image();
@@ -48,6 +52,13 @@ class Game {
       img.src = './assets/' + id + '.webp';
     }));
     await Promise.all(jobs);
+    await flareReady;
+  }
+  rebuildHeroSheet() {
+    if (!this.hero || !this.flare?.meta) return;
+    const gender = this.hero.cls === 'huntress' ? 'f' : 'm';
+    const layers = gearLayers(this.hero, gender);
+    this.flare.composeHero(layers, JSON.stringify(layers), () => {});
   }
   start() {
     this.renderer = new Renderer(this.canvas, this.assets);
@@ -63,6 +74,7 @@ class Game {
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.save(); });
     addEventListener('pagehide', () => this.save());
     this.state = 'title';
+    this.ui.open('mainmenu');
     this.last = performance.now();
     requestAnimationFrame(t => this.frame(t));
   }
@@ -87,9 +99,23 @@ class Game {
     this.hero.equip.weapon = it;
     this.cls = CLASSES[cls];
     this.recalc();
+    this.rebuildHeroSheet();
     this.hero.hp = this.stats.maxHp;
     this.hero.res = this.stats.maxRes * .5;
     this.save();
+  }
+  doContinue() {
+    const d = loadGame();
+    if (!d) return;
+    this.sound.ensure(); this.sound.resume();
+    this.restore(d);
+    this.state = 'town'; this.restockVendor(); this.ui.open('town');
+  }
+  doNewGame(cls) {
+    this.sound.ensure(); this.sound.resume();
+    wipeSave();
+    this.newHero(cls);
+    this.state = 'town'; this.restockVendor(); this.ui.open('town');
   }
   recalc() {
     this.cls = CLASSES[this.hero.cls];
@@ -121,6 +147,7 @@ class Game {
     this.vendorStock = [];
     this.rng = makeRng((this.seedBase ^ (Date.now() & 0xffff)) >>> 0);
     this.recalc();
+    this.rebuildHeroSheet();
     this.hero.hp = this.stats.maxHp; this.hero.res = this.stats.maxRes * .5;
     this.applySettings();
   }
@@ -158,7 +185,15 @@ class Game {
     const h = this.hero;
     h.x = this.floor.entry.cx * TILE + TILE / 2; h.y = this.floor.entry.cy * TILE + TILE / 2;
     h.dead = false;
-    this.mobs = []; this.projectiles = []; this.zones = []; this.traps = []; this.drops = [];
+    this.mobs = []; this.projectiles = []; this.zones = []; this.traps = []; this.drops = []; this.corpses = [];
+    // предзагрузка листов монстров акта + слуг
+    if (this.flare?.meta) {
+      const names = new Set(['e_skeleton', 'e_wyvern']);
+      for (const k of this.actData.mobs) if (MOBS[k].flare) names.add(MOBS[k].flare);
+      if (MOBS[this.actData.boss]?.flare) names.add(MOBS[this.actData.boss].flare);
+      this.flare.preload([...names]);
+      this.rebuildHeroSheet();
+    }
     // спавны
     const lvlRange = this.actData.mobLvl;
     const mobLvl = p.rift ? 30 + p.riftLvl * 2 : clamp(lvlRange[0] + (p.floor - 1) * 2, lvlRange[0], lvlRange[1]);
@@ -216,6 +251,7 @@ class Game {
   }
   revive() {
     this.hero.dead = false;
+    this.hero.deadT = 0;
     this.recalc();
     this.hero.hp = this.stats.maxHp; this.hero.res = this.stats.maxRes * .5;
     this.hero.potionCharges = this.stats.potions;
@@ -240,13 +276,14 @@ class Game {
     if (slot === 'offhand' && h.equip.weapon?.twoHand) { h.inventory.push(h.equip.weapon); h.equip.weapon = null; }
     if (old) h.inventory.push(old);
     this.recalc();
+    this.rebuildHeroSheet();
     this.hero.potionCharges = Math.min(this.hero.potionCharges, this.stats.potions);
   }
   unequipItem(slot) {
     const h = this.hero;
     const it = h.equip[slot];
     if (!it || h.inventory.length >= 24) return;
-    h.equip[slot] = null; h.inventory.push(it); this.recalc();
+    h.equip[slot] = null; h.inventory.push(it); this.recalc(); this.rebuildHeroSheet();
   }
 
   // ---------- ЦИКЛ ----------
@@ -274,27 +311,12 @@ class Game {
 
   update(dt, cmds) {
     this.time += dt;
-    if (this.state !== 'dungeon') {
-      if (this.state === 'title' && (cmds.tap || cmds.once.has('attack'))) {
-        this.sound.ensure(); this.sound.resume();
-        if (hasSave()) { const d = loadGame(); this.restore(d); this.state = 'town'; this.ui.open('town'); this.restockVendor(); }
-        else this.state = 'classpick';
-      } else if (this.state === 'classpick' && cmds.tap) {
-        const n = Object.keys(CLASSES).length;
-        const cw = Math.min(innerWidth * .9 / n, 150), totalW = cw * n;
-        const x0 = innerWidth / 2 - totalW / 2;
-        const i = Math.floor((cmds.tap.x - x0) / cw);
-        const cy = innerHeight * .52;
-        if (i >= 0 && i < n && Math.abs(cmds.tap.y - cy) < 160) {
-          this.newHero(Object.keys(CLASSES)[i]);
-          this.state = 'town'; this.ui.open('town'); this.restockVendor();
-        }
-      }
-      return;
-    }
+    if (this.state !== 'dungeon') return; // меню — DOM-панели
     const h = this.hero, s = this.stats;
-    if (h.dead) return;
+    for (let i = this.corpses.length - 1; i >= 0; i--) { this.corpses[i].t += dt; if (this.corpses[i].t > 4) this.corpses.splice(i, 1); }
+    if (h.dead) { h.deadT = (h.deadT || 0) + dt; return; }
     h.animT += dt;
+    if (h.action) { h.action.t += dt * 1000; if (h.action.t > 520) h.action = null; }
     if (h.attackCd > 0) h.attackCd -= dt;
     if (h.attackT > 0) h.attackT -= dt;
     if (h.hurtT > 0) h.hurtT -= dt;
@@ -315,6 +337,7 @@ class Game {
     if (h.moving) {
       if (ml > 1) { mx /= ml; my /= ml; }
       h.faceX = mx; h.faceY = my;
+      if (!h.action) h.faceAngle = Math.atan2(my, mx);
       if (mx) h.dir = mx < 0 ? -1 : 1;
       const sp = s.moveSpeed * (h.slowT > 0 ? .5 : 1);
       const [nx, ny] = collide(this.floor, h.x + mx * sp * dt, h.y + my * sp * dt, h.r);
@@ -473,7 +496,7 @@ class Game {
   // ---------- РЕНДЕР ----------
   render(timeS, cmds) {
     const r = this.renderer, ctx = r.ctx;
-    if (this.state === 'title' || this.state === 'classpick') {
+    if (this.state === 'title') {
       ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
       const bgi = this.assets.title_bg;
       ctx.fillStyle = '#05060a'; ctx.fillRect(0, 0, innerWidth, innerHeight);
@@ -496,33 +519,7 @@ class Game {
       ctx.shadowBlur = 0;
       ctx.font = '16px Georgia'; ctx.fillStyle = '#8d8574';
       ctx.fillText(STR.subtitle, innerWidth / 2, innerHeight * .26 + 30);
-      if (this.state === 'title') {
-        ctx.font = '18px Georgia';
-        ctx.fillStyle = `rgba(220,205,170,${.55 + Math.sin(timeS * 2.4) * .35})`;
-        ctx.fillText(hasSave() ? STR.continueGame + ' →' : STR.tapToStart, innerWidth / 2, innerHeight * .72);
-      } else {
-        // выбор класса
-        ctx.font = '22px Georgia'; ctx.fillStyle = '#c9bf9f';
-        ctx.fillText(STR.chooseClass, innerWidth / 2, innerHeight * .36);
-        const keys = Object.keys(CLASSES);
-        const cw = Math.min(innerWidth * .9 / keys.length, 150);
-        const x0 = innerWidth / 2 - cw * keys.length / 2;
-        keys.forEach((k, i) => {
-          const x = x0 + i * cw + cw / 2, y = innerHeight * .52;
-          const img = this.assets[CLASSES[k].sprite];
-          const sz = cw * .82;
-          ctx.fillStyle = 'rgba(20,17,12,0.6)';
-          ctx.fillRect(x - cw / 2 + 4, y - sz * .7, cw - 8, sz * 1.35);
-          ctx.strokeStyle = '#5c4a1e'; ctx.strokeRect(x - cw / 2 + 4, y - sz * .7, cw - 8, sz * 1.35);
-          if (img) ctx.drawImage(img, x - sz / 2, y - sz * .62, sz, sz);
-          ctx.font = `bold ${Math.min(15, cw / 7)}px Georgia`; ctx.fillStyle = '#e8dcc0';
-          ctx.fillText(STR.classes[k].name, x, y + sz * .55);
-        });
-        ctx.font = '13px Georgia'; ctx.fillStyle = '#8d8574';
-        // описание — по последнему наведению не делаем; кратко:
-        ctx.fillText('Коснись героя, чтобы начать путь', innerWidth / 2, innerHeight * .52 + cw * 1.05);
-      }
-      return;
+      return; // кнопки меню — DOM-панель
     }
     if (this.state === 'town' || this.state === 'dead') {
       ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
@@ -542,6 +539,7 @@ class Game {
       const img = this.assets.dec_chest;
       if (img) { r.ctx.globalAlpha = c.opened ? .45 : 1; r.ctx.drawImage(img, c.x - 30, c.y - 42, 60, 60); r.ctx.globalAlpha = 1; }
     }
+    r.drawCorpses(this);
     r.drawDrops(this, timeS);
     // сортировка по y для глубины (мобы + герой)
     const drawList = this.mobs.filter(m => !m.dead && Math.abs(m.x - r.cam.x) < innerWidth && Math.abs(m.y - r.cam.y) < innerHeight);

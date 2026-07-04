@@ -11,10 +11,12 @@ export function makeMob(rng, kind, x, y, lvl, eliteMod) {
     type: 'mob', kind, x, y, r: base.r * (base.scale || 1), lvl,
     hp: base.hp * sc.hp, maxHp: base.hp * sc.hp, dmg: base.dmg * sc.dmg,
     speed: base.speed, xp: base.xp * sc.xp, ai: base.ai, family: base.family,
-    sprite: base.sprite, tint: base.tint || null, scale: base.scale || 1,
+    sprite: base.sprite, flare: base.flare, fscale: base.fscale || 1,
+    tint: base.tint || null, scale: base.scale || 1,
     cd: 0, hitT: 0, slowT: 0, freezeT: 0, stunT: 0, fearT: 0, rootT: 0,
     dots: [], dir: 1, animT: Math.random() * 10, aggro: false, boss: base.boss || 0,
     lunge: base.lunge, boomR: base.boomR, proj: base.proj, skills: base.skills, phase: 0,
+    angle: Math.PI / 2, action: null,
   };
   if (eliteMod) {
     const em = ELITE_MODS[eliteMod];
@@ -54,6 +56,7 @@ export function killMob(g, m) {
   if (m.dead) return; m.dead = true;
   bus.emit('mobDied', m);
   g.fx.burst(m.x, m.y, m.elite ? 22 : 12, '#8b0f23');
+  if (m.flare && g.corpses) g.corpses.push({ flare: m.flare, x: m.x, y: m.y, angle: m.angle, r: m.r, fscale: m.fscale, tint: m.tint, t: 0 });
   if (m.type === 'ally') return;
   // опыт
   gainXp(g, m.xp);
@@ -125,6 +128,8 @@ export function thornsBack(g, m) {
 // ---- ОБНОВЛЕНИЕ МОНСТРА ----
 export function updateMob(g, m, dt) {
   m.animT += dt;
+  m.moving = false;
+  if (m.action) { m.action.t += dt * 1000; if (m.action.t > 650) m.action = null; }
   if (m.hitT > 0) m.hitT -= dt;
   // доты
   for (let i = m.dots.length - 1; i >= 0; i--) {
@@ -142,6 +147,7 @@ export function updateMob(g, m, dt) {
   if (m.slowT > 0) m.slowT -= dt;
   if (m.rootT > 0) { m.rootT -= dt; sp = 0; }
   m.dir = dx < 0 ? -1 : 1;
+  m.angle = Math.atan2(dy, dx);
   m.cd -= dt;
 
   // союзники героя воюют с монстрами
@@ -162,6 +168,7 @@ export function updateMob(g, m, dt) {
     else if (d < 140) { moveMob(g, m, -dx / d, -dy / d, sp * .8, dt); }
     if (m.cd <= 0 && d < 460 && losClear(g.floor, m.x, m.y, h.x, h.y)) {
       m.cd = 2.2;
+      m.action = { name: 'cast', t: 0 };
       g.projectiles.push({ from: 'mob', x: m.x, y: m.y, vx: dx / d * 300, vy: dy / d * 300, r: 7,
         dmg: m.dmg, elem: m.proj === 'fire' ? 'fire' : null, ttl: 2.2, color: m.proj === 'fire' ? '#ff7043' : '#b388ff', lvl: m.lvl });
       bus.emit('mobCast', m);
@@ -174,6 +181,7 @@ export function updateMob(g, m, dt) {
     else if (d > m.r + 16) moveMob(g, m, dx / d, dy / d, sp, dt);
     if (d < m.r + 22 && m.cd <= 0) {
       m.cd = 1.1;
+      m.action = { name: 'swing', t: 0 };
       const dealt = damageHero(g, m.dmg, m.elem, m.lvl);
       if (dealt) thornsBack(g, m);
       if (m.leech) m.hp = Math.min(m.maxHp, m.hp + dealt * m.leech);
@@ -211,9 +219,11 @@ function updateAlly(g, m, dt) {
   }
   const dx = target.x - m.x, dy = target.y - m.y, d = Math.hypot(dx, dy);
   m.dir = dx < 0 ? -1 : 1;
+  m.angle = Math.atan2(dy, dx);
   if (d > m.r + target.r + 6) moveMob(g, m, dx / d, dy / d, m.speed, dt);
   else if (m.cd <= 0) {
     m.cd = 1;
+    m.action = { name: 'swing', t: 0 };
     const dmg = m.dmg * (1 + s.minionDmg);
     target.hp -= dmg; target.hitT = .12; target.aggro = true;
     g.fx.number(target.x, target.y - target.r, Math.round(dmg), '#7fd6a0');
@@ -228,6 +238,7 @@ function updateBoss(g, m, dt, d, dx, dy) {
   if (d > m.r + 26) moveMob(g, m, dx / d, dy / d, sp, dt);
   else if (m.cd <= 0) {
     m.cd = enraged ? .8 : 1.2;
+    m.action = { name: 'swing', t: 0 };
     const dealt = damageHero(g, m.dmg, m.elem, m.lvl);
     if (dealt) thornsBack(g, m);
   }
