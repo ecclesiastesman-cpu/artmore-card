@@ -22,5 +22,21 @@
  "wpn_axe": "75d971c3-171c-43f1-9a90-eb4dda72bda2",
  "wpn_greatsword": "86221b26-ffd3-4ef3-8d23-620cf50766f3",
  "wpn_bow": "63886c0a-bd0e-449c-ab6e-54793e5abb70",
- "wpn_staff": "35f46920-7207-4c74-a279-a715da785a2b"
+ "wpn_staff": "35f46920-7207-4c74-a279-a715da785a2b",
+ "wpn_scythe": "a274318d-f150-49a7-98e7-112b12e8d73e",
+ "wpn_dagger": "13a6f7e3-6478-4e21-bbf1-01c6a98f0198",
+ "helm_iron": "b6d4fd0d-11ff-40bb-b571-03febdb2dbbf",
+ "shield_tower": "3c177786-a47e-4105-88bc-b1e2d903b177",
+ "chest_plate": "fa12838a-754f-4f86-b519-8b346f8e84c4",
+ "chest_robe": "be811b49-b798-4023-ba78-6f35f4f57537",
+ "items_sheet": "c22967aa-4e08-4ef9-9b36-ec7d4b9cd4e9",
+ "tile_crypt": "0befe718-85f9-48f1-bf63-3c916857a3cb",
+ "tile_catacomb": "ea99b0c0-e03b-4745-aa95-6e73040228b9",
+ "tile_torture": "75197713-2b6e-4e35-a98f-f3d0b3eb8635",
+ "tile_hell": "63c6a60f-225c-40ca-ad76-5250e62782a2",
+ "dec_sarcophagus": "f3f95f39-27ae-48d2-9bd9-f932f8e3dd0e",
+ "dec_bones": "227b3021-6e6c-49ad-9b45-94e107760b1b",
+ "dec_chest": "f8cd4dfd-b383-4cbf-9b48-ec1fa426b731",
+ "dec_portal": "0c13f0cf-549d-4494-974f-2becc02ad61a",
+ "title_bg": "cab12e70-d210-4682-8ee1-6bb3738191a0"
 }
