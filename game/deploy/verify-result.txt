@@ -2,4 +2,6 @@ url: https://lush-quartz-123.higgsfield.gg/
 status: 200
 sw: 200
 asset: 200
+flare_meta: 200
+flare_sheet: 200
 title_found: 1
