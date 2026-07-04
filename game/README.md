@@ -26,7 +26,13 @@
 - `sw.js`, `manifest.webmanifest` — PWA-оффлайн
 - `deploy/` — пакет и данные публикации (game_id для обновлений!)
 
-## Обновление ассетов (когда появятся кредиты Higgsfield)
-Рабочий промпт изоляции проверен (см. `assets_raw/test_ghoul.png`):
-«isolated game character asset: one single <описание>, full body, centered, completely alone on a flat solid uniform bright magenta pink background like a sticker cutout, absolutely no scenery... + стилевой токен» — z_image, 0.15 кр/шт.
-Перегенерировать ~30 спрайтов ≈ 5–7 кредитов, затем: мост fetch-assets → tools/process_assets.py → пересборка зипа → deploy_game с тем же game_id.
+## Графика (v2 — полностью бесплатная)
+Герои и монстры — покадрово анимированный арт проекта Flare (CC-BY-SA, см. CREDITS.md):
+8 направлений (5 запечено + зеркала), анимации stance/run/swing/cast/shoot/die,
+настоящая «бумажная кукла» — экипировка отрисовывается слоями по направлениям.
+Пайплайн: `tools/flare_bake.py` (клон flareteam/flare-game → атласы webp + meta.json).
+
+## Публикация
+Хостинг: Higgsfield (game_id в deploy/deploy.json — обновление тем же id).
+Для GitHub Pages: создать пустой публичный репозиторий, положить содержимое game/
+(без assets_raw и deploy) + tools/pages-deploy.yml в .github/workflows/deploy.yml.
