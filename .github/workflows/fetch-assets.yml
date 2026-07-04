@@ -1,5 +1,8 @@
 name: fetch-assets
 on:
+  push:
+    branches: ['claude/diablo-rpg-iphone-game-x8frpk']
+    paths: ['game/design/urls.json', '.github/workflows/fetch-assets.yml']
   workflow_dispatch:
 
 permissions:
