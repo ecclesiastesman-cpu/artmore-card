@@ -28,6 +28,7 @@ export class Input {
     this.canvas = canvas;
     this.held = new Set();
     this.stick = { active: false, id: -1, ox: 0, oy: 0, x: 0, y: 0 };
+    this.aim = { active: false, id: -1, ox: 0, oy: 0, x: 0, y: 0, t: 0 };
     this.buttons = new Map(); // экранные кнопки: id -> {x,y,r,cmd,held,touchId}
     this.tapWorld = null;     // тап по миру (десктоп-клик/правая зона без кнопки)
     this.pressedOnce = new Set();
@@ -50,11 +51,20 @@ export class Input {
           }
           if (!onBtn && x < innerWidth * .45 && !this.stick.active) {
             this.stick = { active: true, id: t.identifier, ox: x, oy: y, x, y };
+          } else if (!onBtn && !this.aim.active) {
+            // правая зона: стик прицеливания и удара
+            this.aim = { active: true, id: t.identifier, ox: x, oy: y, x, y, t: performance.now() };
           } else if (!onBtn) { this.tapWorld = { x, y }; }
         } else if (phase === 'move') {
           if (this.stick.active && t.identifier === this.stick.id) { this.stick.x = x; this.stick.y = y; }
+          if (this.aim.active && t.identifier === this.aim.id) { this.aim.x = x; this.aim.y = y; }
         } else {
           if (this.stick.active && t.identifier === this.stick.id) this.stick.active = false;
+          if (this.aim.active && t.identifier === this.aim.id) {
+            // короткий тап без наклона = разовый удар по ближайшему
+            if (performance.now() - this.aim.t < 220 && Math.hypot(x - this.aim.ox, y - this.aim.oy) < 14) this.pressedOnce.add('attack');
+            this.aim.active = false;
+          }
           for (const b of this.buttons.values()) if (b.touchId === t.identifier) { b.held = false; b.touchId = -1; }
         }
       }
@@ -79,10 +89,16 @@ export class Input {
       const dx = this.stick.x - this.stick.ox, dy = this.stick.y - this.stick.oy, d = Math.hypot(dx, dy);
       if (d > 8) { const m = Math.min(1, d / 52); c.moveX = dx / d * m; c.moveY = dy / d * m; }
     }
+    if (this.aim.active) {
+      const dx = this.aim.x - this.aim.ox, dy = this.aim.y - this.aim.oy, d = Math.hypot(dx, dy);
+      if (d > 16) { c.aimX = dx / d; c.aimY = dy / d; c.attack = true; }
+    }
     for (const gp of navigator.getGamepads?.() ?? []) {
       if (!gp) continue;
       if (Math.abs(gp.axes[0]) > .2) c.moveX = gp.axes[0];
       if (Math.abs(gp.axes[1]) > .2) c.moveY = gp.axes[1];
+      const ax = gp.axes[2] ?? 0, ay = gp.axes[3] ?? 0;
+      if (Math.hypot(ax, ay) > .35) { c.aimX = ax; c.aimY = ay; c.attack = true; }
       const GB = { 0: 'attack', 1: 'skill1', 2: 'skill2', 3: 'skill3', 5: 'skill4', 4: 'potion', 9: 'menu' };
       gp.buttons.forEach((b, i) => { if (b.pressed && GB[i]) { if (!this._gpHeld?.has(i)) this.pressedOnce.add(GB[i]); (this._gpHeld ||= new Set()).add(i); c[GB[i]] = true; } else this._gpHeld?.delete(i); });
     }

@@ -14,6 +14,31 @@ export class Renderer {
     this.lightCanvas = document.createElement('canvas');
     this.zoom = 1;
     this.reduceShake = false; this.reduceFlash = false;
+    this.wallCache = new Map(); // act -> canvas кирпичной кладки из тайла акта
+  }
+  // кирпичная стена, выведенная из текстуры пола акта: темнее, с рядами кладки
+  wallPattern(g) {
+    const key = g.actData.tiles;
+    let c = this.wallCache.get(key);
+    if (c) return c;
+    const tile = this.assets[key];
+    c = document.createElement('canvas'); c.width = c.height = 128;
+    const x = c.getContext('2d');
+    if (tile) { x.drawImage(tile, 0, 0, 128, 128); }
+    else { x.fillStyle = g.actData.wall; x.fillRect(0, 0, 128, 128); }
+    x.fillStyle = 'rgba(8,8,12,0.62)'; x.fillRect(0, 0, 128, 128); // затемнение
+    // кладка: ряды кирпичей со швами
+    x.strokeStyle = 'rgba(0,0,0,0.55)'; x.lineWidth = 2;
+    for (let row = 0; row < 4; row++) {
+      const y = row * 32;
+      x.beginPath(); x.moveTo(0, y); x.lineTo(128, y); x.stroke();
+      const off = (row % 2) * 32;
+      for (let bx = off; bx <= 128; bx += 64) { x.beginPath(); x.moveTo(bx, y); x.lineTo(bx, y + 32); x.stroke(); }
+      // блик сверху каждого ряда
+      x.fillStyle = 'rgba(255,240,210,0.05)'; x.fillRect(0, y + 2, 128, 3);
+    }
+    this.wallCache.set(key, c);
+    return c;
   }
   resize(dprCap = 1.5) {
     const dpr = Math.min(devicePixelRatio || 1, dprCap);
@@ -74,21 +99,72 @@ export class Renderer {
         }
       }
     }
-    // стены: тёмные блоки с бликом сверху (процедурный ассет по формуле)
+    // декали пола: кровь, трещины, мох (под сущностями, поверх тайлов)
+    for (const d of f.decals) {
+      if (Math.abs(d.x - this.cam.x) > innerWidth || Math.abs(d.y - this.cam.y) > innerHeight) continue;
+      ctx.save();
+      ctx.translate(d.x, d.y); ctx.rotate(d.a);
+      if (d.kind === 'blood') {
+        ctx.fillStyle = 'rgba(96,10,18,0.5)';
+        ctx.beginPath(); ctx.ellipse(0, 0, d.r, d.r * .6, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(70,6,12,0.55)';
+        for (let i = 0; i < 4; i++) { const a2 = d.seed * .7 + i * 1.9; ctx.beginPath(); ctx.arc(Math.cos(a2) * d.r * .9, Math.sin(a2) * d.r * .55, d.r * .18, 0, 7); ctx.fill(); }
+      } else if (d.kind === 'crack') {
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-d.r, 0);
+        for (let i = 1; i <= 4; i++) ctx.lineTo(-d.r + d.r * i * .5, Math.sin(d.seed + i * 2.1) * d.r * .3);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(70,92,48,0.28)';
+        ctx.beginPath(); ctx.ellipse(0, 0, d.r, d.r * .7, 0, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // стены: кирпичная кладка из текстуры акта, объём и тени
+    const wp = this.wallPattern(g);
+    const WALL_H = 26; // высота "лица" стены над её тайлом
     for (let ty = Math.max(0, y0); ty <= Math.min(f.H - 1, y1); ty++) {
       for (let tx = Math.max(0, x0); tx <= Math.min(f.W - 1, x1); tx++) {
         if (f.g[ty * f.W + tx] !== T_WALL) continue;
-        // рисуем только стены, граничащие с полом (скрытое не рисуем)
         if (isWall(f, tx - 1, ty) && isWall(f, tx + 1, ty) && isWall(f, tx, ty - 1) && isWall(f, tx, ty + 1)
           && isWall(f, tx - 1, ty - 1) && isWall(f, tx + 1, ty + 1) && isWall(f, tx - 1, ty + 1) && isWall(f, tx + 1, ty - 1)) continue;
         const x = tx * TILE, y = ty * TILE;
-        ctx.fillStyle = g.actData.wall;
-        ctx.fillRect(x, y - 14, TILE, TILE + 14);
-        ctx.fillStyle = 'rgba(255,255,255,0.05)';
-        ctx.fillRect(x, y - 14, TILE, 5);
-        ctx.fillStyle = 'rgba(0,0,0,0.42)';
-        if (!isWall(f, tx, ty + 1)) ctx.fillRect(x, y + TILE - 6, TILE, 6);
+        // тень стены на пол справа-снизу (объём)
+        if (!isWall(f, tx, ty + 1)) { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + TILE, TILE, 10); }
+        if (!isWall(f, tx + 1, ty)) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + TILE, y, 8, TILE); }
+        // лицо стены
+        ctx.drawImage(wp, x, y - WALL_H, TILE, TILE + WALL_H);
+        // верхняя кромка (свет) и низ (тьма)
+        ctx.fillStyle = 'rgba(235,215,180,0.10)'; ctx.fillRect(x, y - WALL_H, TILE, 4);
+        const grad = ctx.createLinearGradient(0, y + TILE - 22, 0, y + TILE);
+        grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.5)');
+        ctx.fillStyle = grad; ctx.fillRect(x, y + TILE - 22, TILE, 22);
+        // угловые засветы от соседнего пола сверху не нужны — свет решает
       }
+    }
+    // стоячие жаровни с живым пламенем (на позициях факелов)
+    for (const t of f.torches) {
+      const wx = t.x * TILE + TILE / 2, wy = t.y * TILE + TILE / 2;
+      if (Math.abs(wx - this.cam.x) > innerWidth || Math.abs(wy - this.cam.y) > innerHeight) continue;
+      ctx.save();
+      ctx.translate(wx, wy);
+      // чаша и нога
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(0, 6, 9, 3.5, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#241d14'; ctx.fillRect(-2, -16, 4, 22);
+      ctx.fillStyle = '#382a1c'; ctx.beginPath(); ctx.ellipse(0, -17, 8, 3.5, 0, 0, 7); ctx.fill();
+      // пламя: два лепестка с фликером
+      const fl = Math.sin(timeS * 13 + wx) * .22 + Math.sin(timeS * 29 + wy) * .12;
+      ctx.globalAlpha = .85;
+      ctx.fillStyle = '#ff9840';
+      ctx.beginPath();
+      ctx.moveTo(-5, -18); ctx.quadraticCurveTo(-6, -30 - fl * 8, 0, -36 - fl * 10);
+      ctx.quadraticCurveTo(6, -30 - fl * 6, 5, -18); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffd75e';
+      ctx.beginPath();
+      ctx.moveTo(-2.5, -18); ctx.quadraticCurveTo(-3, -25 - fl * 5, 0, -29 - fl * 7);
+      ctx.quadraticCurveTo(3, -25 - fl * 4, 2.5, -18); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
   }
 
@@ -98,7 +174,7 @@ export class Renderer {
     for (const c of g.corpses) {
       const fm = g.flare?.meta?.[c.flare];
       if (!fm) continue;
-      const fscale = (c.r * 5.4 / fm.ay) * (c.fscale || 1);
+      const fscale = (c.r * 6.1 / fm.ay) * (c.fscale || 1);
       const alpha = c.t < 2.5 ? 1 : Math.max(0, 1 - (c.t - 2.5) / 1.5);
       g.flare.draw(ctx, c.flare, c.x, c.y + 4, 'die', c.t * 1000, c.angle, fscale, alpha);
     }
@@ -110,7 +186,7 @@ export class Renderer {
     const h = g.hero;
     if (!h.form && g.flare?.heroSheet) {
       const s = g.flare.heroSheet;
-      const fscale = 88 / s.meta.ay;
+      const fscale = 100 / s.meta.ay;
       ctx.save();
       ctx.translate(h.x, h.y);
       ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -198,7 +274,7 @@ export class Renderer {
     if (m.flare && g.flare) {
       const fm = g.flare.meta?.[m.flare];
       if (fm) {
-        const fscale = (m.r * 5.4 / fm.ay) * (m.fscale || 1);
+        const fscale = (m.r * 6.1 / fm.ay) * (m.fscale || 1);
         const anim = m.action ? m.action.name : m.moving ? 'run' : 'stance';
         const t = m.action ? m.action.t : m.animT * 1000;
         drawn = g.flare.draw(ctx, m.flare, 0, 4, anim, t, m.angle, fscale);
@@ -251,6 +327,16 @@ export class Renderer {
           grad.addColorStop(0, 'rgba(255,255,255,0)');
           grad.addColorStop(1, col + 'aa');
           ctx.fillStyle = grad; ctx.fillRect(d.x - 2, y - 70, 4, 70);
+        }
+        // D2-стиль: подпись предмета на полу (редкие+ всегда, прочие — рядом с героем)
+        const near = Math.abs(d.x - g.hero.x) < 150 && Math.abs(d.y - g.hero.y) < 150;
+        if ((near || (d.item.rarity !== 'common' && d.item.rarity !== 'magic')) && d.t > .5) {
+          ctx.font = 'bold 11px Georgia, serif';
+          const tw = ctx.measureText(d.item.name).width;
+          ctx.fillStyle = 'rgba(5,4,2,0.78)';
+          ctx.fillRect(d.x - tw / 2 - 5, y - 42, tw + 10, 15);
+          ctx.fillStyle = col; ctx.textAlign = 'center';
+          ctx.fillText(d.item.name, d.x, y - 31);
         }
       }
     }

@@ -344,8 +344,10 @@ class Game {
       h.x = nx; h.y = ny;
     }
     if (h.slowT > 0) h.slowT -= dt;
-    // атака/умения
-    const [ax, ay] = autoAim(this);
+    // атака/умения: правый стик задаёт направление удара, иначе автоприцел
+    let ax, ay;
+    if (cmds.aimX !== undefined) { ax = h.x + cmds.aimX * 220; ay = h.y + cmds.aimY * 220; }
+    else [ax, ay] = autoAim(this);
     if (cmds.attack) basicAttack(this, ax, ay);
     for (let i = 0; i < 4; i++) {
       if (cmds['skill' + (i + 1)] && h.skillBar[i]) useSkill(this, h.skillBar[i], ax, ay);
@@ -477,6 +479,13 @@ class Game {
       if (dist2(h.x, h.y, ex.cx * TILE + TILE / 2, ex.cy * TILE + TILE / 2) < 40 * 40) {
         if (!this.floor.isBossFloor) this.nextFloor();
       }
+    }
+    // разведка миникарты
+    if ((this.tick & 15) === 0) {
+      const f = this.floor, htx = Math.floor(h.x / TILE), hty = Math.floor(h.y / TILE);
+      for (let ty = Math.max(0, hty - 4); ty <= Math.min(f.H - 1, hty + 4); ty++)
+        for (let tx = Math.max(0, htx - 4); tx <= Math.min(f.W - 1, htx + 4); tx++)
+          f.visited[ty * f.W + tx] = 1;
     }
     // камера
     const cam = this.renderer.cam;

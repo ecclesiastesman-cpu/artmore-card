@@ -67,41 +67,80 @@ export class UI {
       ctx.beginPath(); ctx.arc(orbR * 2 + 40 + i * 20, H - 22, 7, 0, 7); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    // джойстик
-    if (touch && input.stick.active) {
-      ctx.strokeStyle = 'rgba(200,190,160,0.35)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(input.stick.ox, input.stick.oy, 52, 0, 7); ctx.stroke();
-      ctx.fillStyle = 'rgba(200,190,160,0.4)';
-      const dx = clamp(input.stick.x - input.stick.ox, -52, 52), dy = clamp(input.stick.y - input.stick.oy, -52, 52);
-      ctx.beginPath(); ctx.arc(input.stick.ox + dx, input.stick.oy + dy, 22, 0, 7); ctx.fill();
-    }
-    // кнопки скиллов (тач)
+    // ---- стики (тач) ----
     if (touch) {
-      const bx = W - 66, by = H - 130;
-      this.skillButtons(g).forEach((b, i) => {
-        const pos = [
-          { x: W - 60, y: H - 148 }, { x: W - 128, y: H - 106 }, { x: W - 148, y: H - 178 }, { x: W - 84, y: H - 218 }, { x: W - 24, y: H - 218 },
-        ][i] || { x: bx, y: by - i * 66 };
-        input.addButton('sk' + i, pos.x, pos.y, i === 0 ? 34 : 25, b.cmd);
-        const usable = b.id === 'attack' ? true : canUse(g, b.id);
-        ctx.globalAlpha = usable ? .92 : .35;
-        ctx.fillStyle = '#151310';
-        ctx.beginPath(); ctx.arc(pos.x, pos.y, i === 0 ? 32 : 24, 0, 7); ctx.fill();
+      const safeB = 16; // нижний отступ
+      // левый стик: подложка в месте покоя, при касании — по месту пальца
+      const lsx = input.stick.active ? input.stick.ox : 96, lsy = input.stick.active ? input.stick.oy : H - 148 - safeB;
+      ctx.globalAlpha = input.stick.active ? .5 : .22;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#c8beA0';
+      ctx.beginPath(); ctx.arc(lsx, lsy, 52, 0, 7); ctx.stroke();
+      ctx.globalAlpha = input.stick.active ? .18 : .08;
+      ctx.fillStyle = '#c8bea0'; ctx.beginPath(); ctx.arc(lsx, lsy, 52, 0, 7); ctx.fill();
+      ctx.globalAlpha = input.stick.active ? .55 : .25;
+      const ldx = input.stick.active ? clamp(input.stick.x - input.stick.ox, -52, 52) : 0;
+      const ldy = input.stick.active ? clamp(input.stick.y - input.stick.oy, -52, 52) : 0;
+      ctx.beginPath(); ctx.arc(lsx + ldx, lsy + ldy, 24, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
+      // правый стик прицеливания (фиксированная база)
+      const asx = W - 96, asy = H - 148 - safeB;
+      const aimOn = input.aim.active;
+      ctx.globalAlpha = aimOn ? .6 : .28;
+      ctx.strokeStyle = '#d8b25a'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(asx, asy, 46, 0, 7); ctx.stroke();
+      // засечки направления
+      for (let a = 0; a < 8; a++) {
+        const an = a * Math.PI / 4;
+        ctx.globalAlpha = aimOn ? .35 : .15;
+        ctx.beginPath();
+        ctx.moveTo(asx + Math.cos(an) * 38, asy + Math.sin(an) * 38);
+        ctx.lineTo(asx + Math.cos(an) * 45, asy + Math.sin(an) * 45);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = aimOn ? .2 : .08;
+      ctx.fillStyle = '#d8b25a'; ctx.beginPath(); ctx.arc(asx, asy, 46, 0, 7); ctx.fill();
+      // рукоятка: меч-глиф в центре
+      let adx = 0, ady = 0;
+      if (aimOn) {
+        adx = clamp(input.aim.x - input.aim.ox, -46, 46);
+        ady = clamp(input.aim.y - input.aim.oy, -46, 46);
+      }
+      ctx.globalAlpha = aimOn ? .75 : .4;
+      ctx.beginPath(); ctx.arc(asx + adx, asy + ady, 23, 0, 7); ctx.fill();
+      ctx.globalAlpha = aimOn ? 1 : .6;
+      this.drawSkillGlyph(ctx, { id: 'attack' }, asx + adx, asy + ady, 13);
+      ctx.globalAlpha = 1;
+      // база прицельного стика ловит касание как зона (совместимо со старым тапом)
+      // скиллы дугой над прицельным стиком
+      const bar = g.hero.skillBar;
+      bar.forEach((id, i) => {
+        if (!id) return;
+        const ang = Math.PI * (1.02 + i * .17); // дуга слева-сверху от стика
+        const pos = { x: asx + Math.cos(ang) * 108, y: asy + Math.sin(ang) * 108 };
+        input.addButton('sk' + (i + 1), pos.x, pos.y, 26, 'skill' + (i + 1));
+        const usable = canUse(g, id);
+        ctx.globalAlpha = usable ? .95 : .35;
+        ctx.fillStyle = '#171310';
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, 25, 0, 7); ctx.fill();
         ctx.strokeStyle = usable ? '#8c6d1f' : '#443c28'; ctx.lineWidth = 2.5; ctx.stroke();
-        this.drawSkillGlyph(ctx, b, pos.x, pos.y, i === 0 ? 20 : 14);
-        const cd = g.hero.cooldowns[b.id];
-        if (cd > 0 && SKILLS[b.id]?.cd) {
-          ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        this.drawSkillGlyph(ctx, { id }, pos.x, pos.y, 14);
+        const cd = g.hero.cooldowns[id];
+        if (cd > 0 && SKILLS[id]?.cd) {
+          ctx.fillStyle = 'rgba(0,0,0,0.68)';
           ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
-          ctx.arc(pos.x, pos.y, i === 0 ? 32 : 24, -Math.PI / 2, -Math.PI / 2 + (cd / SKILLS[b.id].cd) * 7); ctx.fill();
+          ctx.arc(pos.x, pos.y, 25, -Math.PI / 2, -Math.PI / 2 + (cd / SKILLS[id].cd) * 7); ctx.fill();
         }
         ctx.globalAlpha = 1;
       });
-      // кнопки зелья и меню
-      input.addButton('potion', orbR * 2 + 40 + 30, H - 60, 24, 'potion');
-      ctx.fillStyle = '#151310'; ctx.beginPath(); ctx.arc(orbR * 2 + 70, H - 60, 22, 0, 7); ctx.fill();
-      ctx.strokeStyle = '#7a2020'; ctx.lineWidth = 2.5; ctx.stroke();
-      ctx.fillStyle = '#c62828'; ctx.beginPath(); ctx.arc(orbR * 2 + 70, H - 60, 9, 0, 7); ctx.fill();
+      // зелье — возле орба HP
+      input.addButton('potion', orbR * 2 + 62, H - 46 - safeB, 26, 'potion');
+      ctx.fillStyle = 'rgba(23,19,16,0.9)'; ctx.beginPath(); ctx.arc(orbR * 2 + 62, H - 46 - safeB, 23, 0, 7); ctx.fill();
+      ctx.strokeStyle = h.potionCharges > 0 ? '#a33' : '#432'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = h.potionCharges > 0 ? '#c62828' : '#4a2020';
+      ctx.beginPath(); ctx.arc(orbR * 2 + 62, H - 46 - safeB, 9, 0, 7); ctx.fill();
+      ctx.fillStyle = '#e8dcc0'; ctx.font = 'bold 11px Georgia'; ctx.textAlign = 'center';
+      ctx.fillText(h.potionCharges, orbR * 2 + 62 + 15, H - 32 - safeB);
     }
     // кнопка инвентаря/меню
     input.addButton('inv', W - 26, 60, 22, 'inventory');
@@ -111,6 +150,8 @@ export class UI {
     if (g.hero.statPts > 0 || g.hero.talentPts > 0) {
       ctx.fillStyle = '#ffd75e'; ctx.beginPath(); ctx.arc(W - 12, 46, 5, 0, 7); ctx.fill();
     }
+    // миникарта (разведанные зоны)
+    this.drawMinimap(ctx, g, W);
     // босс-бар
     const boss = g.mobs.find(m => m.boss && !m.dead && m.aggro);
     if (boss) {
@@ -119,6 +160,40 @@ export class UI {
       ctx.fillStyle = '#e8dcc0'; ctx.textAlign = 'center'; ctx.font = 'bold 13px Georgia';
       ctx.fillText(STR.mobNames[boss.kind] || '', W / 2, 50);
     }
+  }
+  drawMinimap(ctx, g, W) {
+    const f = g.floor;
+    if (!f) return;
+    const size = 96, cell = size / Math.max(f.W, f.H);
+    const mx = W - size - 10, my = 84;
+    ctx.save();
+    ctx.globalAlpha = .82;
+    ctx.fillStyle = 'rgba(6,5,3,0.75)';
+    ctx.fillRect(mx - 3, my - 3, size + 6, size + 6);
+    ctx.strokeStyle = '#5c4a1e'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(mx - 3, my - 3, size + 6, size + 6);
+    for (let ty = 0; ty < f.H; ty++) {
+      for (let tx = 0; tx < f.W; tx++) {
+        if (!f.visited[ty * f.W + tx]) continue;
+        const t = f.g[ty * f.W + tx];
+        ctx.fillStyle = t === 0 ? '#4a3d28' : '#191512';
+        ctx.fillRect(mx + tx * cell, my + ty * cell, cell + .5, cell + .5);
+      }
+    }
+    // выход
+    const e = f.exit;
+    if (f.visited[e.cy * f.W + e.cx]) {
+      ctx.fillStyle = '#ff9840';
+      ctx.fillRect(mx + e.cx * cell - 1.5, my + e.cy * cell - 1.5, 4, 4);
+    }
+    // босс
+    const boss = g.mobs.find(m => m.boss && !m.dead && m.aggro);
+    if (boss) { ctx.fillStyle = '#c62828'; ctx.beginPath(); ctx.arc(mx + boss.x / 64 * cell, my + boss.y / 64 * cell, 2.5, 0, 7); ctx.fill(); }
+    // герой
+    ctx.fillStyle = '#e8dcc0';
+    ctx.beginPath(); ctx.arc(mx + g.hero.x / 64 * cell, my + g.hero.y / 64 * cell, 2.2, 0, 7); ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
   skillButtons(g) {
     const bar = g.hero.skillBar;
@@ -204,12 +279,50 @@ export class UI {
     </div>`;
   }
 
+  // кадр героя (юг, stance) из собранного листа — «кукла» для меню
+  heroDollUrl(scale = 1.6) {
+    const s = this.g.flare?.heroSheet;
+    if (!s) return null;
+    const anim = s.meta.anims.stance;
+    const c = document.createElement('canvas');
+    c.width = s.meta.cw * scale; c.height = s.meta.ch * scale;
+    const x = c.getContext('2d');
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(s.canvas, anim.start * s.meta.cw, 4 * s.meta.ch, s.meta.cw, s.meta.ch, 0, 0, c.width, c.height);
+    return c.toDataURL();
+  }
+  // превью класса: один кадр (юг, stance), слои собираются на лету
+  classPreviewUrl(cls) {
+    const fl = this.g.flare;
+    if (!fl?.meta) return null;
+    const g2 = cls === 'huntress' ? 'f_' : 'm_';
+    const layers = [g2 + 'default_feet', g2 + 'default_legs', g2 + 'default_hands',
+      cls === 'mage' || cls === 'warlock' ? g2 + 'mage_vest' : cls === 'barbarian' ? g2 + 'default_chest' : g2 + 'leather_chest',
+      g2 + (cls === 'huntress' ? 'head_long' : 'head_short'),
+      ({ barbarian: 'm_battle_axe', huntress: 'f_greatbow', mage: 'm_staff', warlock: 'm_greatstaff', druid: 'm_staff' })[cls]];
+    fl.preload(layers);
+    if (!layers.every(l => fl.loaded(l))) return null;
+    let ax = 0, ay = 0, r = 0, d = 0;
+    for (const l of layers) { const m = fl.meta[l]; ax = Math.max(ax, m.ax); ay = Math.max(ay, m.ay); r = Math.max(r, m.cw - m.ax); d = Math.max(d, m.ch - m.ay); }
+    const c = document.createElement('canvas');
+    c.width = (ax + r) * 1.2; c.height = (ay + d) * 1.2;
+    const x = c.getContext('2d');
+    for (const l of layers) {
+      const m = fl.meta[l], img = fl.images.get(l).img;
+      const st = m.anims.stance;
+      x.drawImage(img, st.start * m.cw, 4 * m.ch, m.cw, m.ch, (ax - m.ax) * 1.2, (ay - m.ay) * 1.2, m.cw * 1.2, m.ch * 1.2);
+    }
+    return c.toDataURL();
+  }
+
   rInventory() {
     const h = this.g.hero;
     const slots = ['weapon', 'offhand', 'helm', 'chest', 'gloves', 'belt', 'boots', 'amulet', 'ring1', 'ring2'];
+    const doll = this.heroDollUrl();
     return `${this.tabs('inventory')}
     <div class="cols">
       <div class="equip">
+        ${doll ? `<div class="doll"><img src="${doll}" alt=""></div>` : ''}
         <div class="h2">${STR.equipped}</div>
         ${slots.map(sl => {
           const it = h.equip[sl];
@@ -286,11 +399,20 @@ export class UI {
     </div>`;
   }
   rClassPick() {
-    return `<div class="tabs"><div class="h1">${STR.chooseClass}</div><button class="tab x" data-act="mainmenu">←</button></div>
+    let missing = false;
+    const html = `<div class="tabs"><div class="h1">${STR.chooseClass}</div><button class="tab x" data-act="mainmenu">←</button></div>
     <div class="townbtns">
-      ${Object.keys(CLASSES).map(k => `<button class="big classbtn" data-act="pickclass" data-id="${k}">
-        <b>${STR.classes[k].name}</b><div class="sub">${STR.classes[k].desc}</div></button>`).join('')}
+      ${Object.keys(CLASSES).map(k => {
+        const url = this.classPreviewUrl(k);
+        if (!url) missing = true;
+        return `<button class="big classbtn" data-act="pickclass" data-id="${k}">
+          ${url ? `<img class="cprev" src="${url}" alt="">` : '<span class="cprev"></span>'}
+          <span class="ctext"><b>${STR.classes[k].name}</b><span class="sub">${STR.classes[k].desc}</span></span>
+        </button>`;
+      }).join('')}
     </div>`;
+    if (missing) setTimeout(() => { if (this.screen === 'classpick') this.render(); }, 600); // дорисуем, когда слои догрузятся
+    return html;
   }
   rTown() {
     const g = this.g;

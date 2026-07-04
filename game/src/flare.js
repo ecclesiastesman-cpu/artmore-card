@@ -3,18 +3,19 @@
 // meta.json: {name: {cw,ch,ax,ay, anims:{stance:{start,frames,dur,type},...}}}
 
 // угол (рад, y вниз) -> [ряд, зеркалить]
+// Ряды листа (проверено на человеческой модели): 0=N, 1=NW, 2=W, 3=SW, 4=S.
 export function rowFlip(angle) {
   let k = Math.round(angle / (Math.PI / 4));
   if (k > 4) k -= 8; if (k < -4) k += 8;
   switch (k) {
-    case 2: return [0, false];   // S
-    case 3: return [1, false];   // SW
+    case 2: return [4, false];   // S
+    case 3: return [3, false];   // SW
     case 4: case -4: return [2, false]; // W
-    case -3: return [3, false];  // NW
-    case -2: return [4, false];  // N
-    case -1: return [3, true];   // NE  <- NW
+    case -3: return [1, false];  // NW
+    case -2: return [0, false];  // N
+    case -1: return [1, true];   // NE  <- NW
     case 0: return [2, true];    // E   <- W
-    default: return [1, true];   // SE  <- SW (k===1)
+    default: return [3, true];   // SE  <- SW (k===1)
   }
 }
 
@@ -84,11 +85,11 @@ export class Flare {
   // ---- сборка героя из слоёв ----
   // порядок слоёв по рядам (из engine/hero_layers.txt Flare)
   static ORDER = [
-    ['main', 'feet', 'legs', 'hands', 'chest', 'head', 'off'], // S
-    ['main', 'feet', 'legs', 'hands', 'chest', 'off', 'head'], // SW
-    ['main', 'feet', 'legs', 'hands', 'chest', 'off', 'head'], // W
+    ['feet', 'legs', 'hands', 'chest', 'off', 'head', 'main'], // ряд 0 = N
     ['main', 'feet', 'legs', 'hands', 'chest', 'off', 'head'], // NW
-    ['feet', 'legs', 'hands', 'chest', 'off', 'head', 'main'], // N
+    ['main', 'feet', 'legs', 'hands', 'chest', 'off', 'head'], // W
+    ['main', 'feet', 'legs', 'hands', 'chest', 'off', 'head'], // SW
+    ['main', 'feet', 'legs', 'hands', 'chest', 'head', 'off'], // S
   ];
   // layers: {feet,legs,hands,chest,head,off,main} -> имя листа или null
   // onReady(sheet) вызовется, когда все слои догрузятся и лист соберётся

@@ -29,10 +29,21 @@ export function genFloor(seed, act, floorNum, isBossFloor) {
   g[exit.cy * W + exit.cx] = T_EXIT;
 
   // декор, светильники, сундуки, спавны
-  const decor = [], torches = [], spawns = [], chests = [];
+  const decor = [], torches = [], spawns = [], chests = [], decals = [];
   for (let i = 1; i < rooms.length; i++) {
     const r = rooms[i];
     const area = r.w * r.h;
+    // колонны в больших залах (архитектура + укрытия)
+    if (!isBossFloor && r.w >= 9 && r.h >= 9) {
+      const px = [r.x + 2, r.x + r.w - 3], py = [r.y + 2, r.y + r.h - 3];
+      for (const cx of px) for (const cy of py) if (rng.chance(.8)) g[cy * W + cx] = T_WALL;
+    }
+    // декали: кровь, трещины, мох
+    const nDec = Math.round(area / 30);
+    for (let k = 0; k < nDec; k++) {
+      decals.push({ x: rng.range(r.x + .5, r.x + r.w - .5) * 64, y: rng.range(r.y + .5, r.y + r.h - .5) * 64,
+        kind: rng.pick(['blood', 'blood', 'crack', 'moss']), r: rng.range(14, 38), a: rng.range(0, 6.28), seed: rng.int(0, 999) });
+    }
     if (!isBossFloor) {
       const packs = Math.max(1, Math.round(area / 55));
       for (let p = 0; p < packs; p++) {
@@ -46,7 +57,8 @@ export function genFloor(seed, act, floorNum, isBossFloor) {
   }
   let bossSpawn = null;
   if (isBossFloor) bossSpawn = { x: exit.cx, y: exit.cy };
-  return { W, H, g, rooms, entry, exit, decor, torches, spawns, chests, bossSpawn, act, floorNum, isBossFloor };
+  const visited = new Uint8Array(W * H);
+  return { W, H, g, rooms, entry, exit, decor, torches, spawns, chests, decals, visited, bossSpawn, act, floorNum, isBossFloor };
 }
 
 export const isWall = (f, tx, ty) => tx < 0 || ty < 0 || tx >= f.W || ty >= f.H || f.g[ty * f.W + tx] === T_WALL;
