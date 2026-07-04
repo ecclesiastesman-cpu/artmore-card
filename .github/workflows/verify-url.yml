@@ -25,6 +25,8 @@ jobs:
             echo "asset: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/hero_barbarian.webp")"
             echo "flare_meta: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/flare/meta.json")"
             echo "flare_sheet: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/flare/e_skeleton.webp")"
+            echo "loot_icon: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/loot/coins.webp")"
+            echo "npc_sheet: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/flare/n_trader.webp")"
             echo "title_found: $(grep -c 'Последняя Свеча' /tmp/page.html || true)"
           } > game/deploy/verify-result.txt
           cat game/deploy/verify-result.txt
