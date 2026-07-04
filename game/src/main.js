@@ -485,7 +485,11 @@ class Game {
       }
       const flick = .9 + Math.sin(timeS * 9) * .05 + Math.sin(timeS * 17) * .05;
       ctx.textAlign = 'center';
-      ctx.font = `bold ${Math.min(52, innerWidth / 9)}px Georgia, serif`;
+      let fs = 52;
+      ctx.font = `bold ${fs}px Georgia, serif`;
+      const tw = ctx.measureText(STR.title).width;
+      if (tw > innerWidth * .92) fs = Math.floor(fs * innerWidth * .92 / tw);
+      ctx.font = `bold ${fs}px Georgia, serif`;
       ctx.shadowColor = '#b9781f'; ctx.shadowBlur = 26 * flick;
       ctx.fillStyle = '#e8dcc0';
       ctx.fillText(STR.title, innerWidth / 2, innerHeight * .26);
@@ -556,6 +560,7 @@ class Game {
 }
 
 const game = new Game();
+if (game.dev) window.__game = game; // отладочный доступ (?dev=1)
 (async () => {
   await game.loadAssets();
   game.start();

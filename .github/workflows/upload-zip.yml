@@ -1,0 +1,23 @@
+name: upload-zip
+on:
+  push:
+    branches: ['claude/diablo-rpg-iphone-game-x8frpk']
+    paths: ['game/deploy/put.json']
+
+permissions:
+  contents: read
+
+jobs:
+  put:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: PUT zip to presigned URL
+        run: |
+          set -e
+          URL=$(python3 -c "import json;print(json.load(open('game/deploy/put.json'))['upload_url'])")
+          CT=$(python3 -c "import json;print(json.load(open('game/deploy/put.json')).get('content_type','application/zip'))")
+          curl -sS -f -X PUT -H "Content-Type: $CT" -T game/deploy/last-candle.zip "$URL"
+          echo "UPLOAD_DONE"

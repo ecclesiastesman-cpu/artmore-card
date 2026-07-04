@@ -38,7 +38,9 @@ export class Input {
     addEventListener('keydown', e => { const c = BIND[e.code]; if (c) { if (!this.held.has(c)) this.pressedOnce.add(c); this.held.add(c); e.preventDefault(); } });
     addEventListener('keyup', e => { const c = BIND[e.code]; if (c) this.held.delete(c); });
 
+    this.lastTouchT = 0;
     const onTouch = (e, phase) => {
+      this.lastTouchT = performance.now();
       for (const t of e.changedTouches) {
         const x = t.clientX, y = t.clientY;
         if (phase === 'start') {
@@ -62,8 +64,9 @@ export class Input {
     canvas.addEventListener('touchmove', e => onTouch(e, 'move'), { passive: false });
     canvas.addEventListener('touchend', e => onTouch(e, 'end'), { passive: false });
     canvas.addEventListener('touchcancel', e => onTouch(e, 'end'), { passive: false });
-    canvas.addEventListener('mousedown', e => { this.tapWorld = { x: e.clientX, y: e.clientY }; this.mouseHeld = true; });
-    canvas.addEventListener('mousemove', e => { this.mouse = { x: e.clientX, y: e.clientY }; if (this.mouseHeld) this.tapWorld = { x: e.clientX, y: e.clientY }; });
+    // Safari после касания синтезирует мышиные события — глушим их окном 700мс
+    canvas.addEventListener('mousedown', e => { if (performance.now() - this.lastTouchT < 700) return; this.tapWorld = { x: e.clientX, y: e.clientY }; this.mouseHeld = true; });
+    canvas.addEventListener('mousemove', e => { if (performance.now() - this.lastTouchT < 700) return; this.mouse = { x: e.clientX, y: e.clientY }; if (this.mouseHeld) this.tapWorld = { x: e.clientX, y: e.clientY }; });
     canvas.addEventListener('mouseup', () => { this.mouseHeld = false; });
   }
   addButton(id, x, y, r, cmd) { const b = this.buttons.get(id) || {}; Object.assign(b, { x, y, r, cmd }); if (b.held === undefined) { b.held = false; b.touchId = -1; } this.buttons.set(id, b); }
