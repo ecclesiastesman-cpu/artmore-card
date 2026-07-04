@@ -289,8 +289,13 @@ class Game {
     this.rebuildHeroSheet();
     this.hero.potionCharges = Math.min(this.hero.potionCharges, this.stats.potions);
   }
-  unequipItem(slot) {
+  unequipItem(slotOrId) {
     const h = this.hero;
+    let slot = slotOrId;
+    if (!h.equip[slot]) { // пришёл id предмета — найдём его слот
+      slot = Object.keys(h.equip).find(sl => h.equip[sl] && String(h.equip[sl].id) === String(slotOrId));
+      if (!slot) return;
+    }
     const it = h.equip[slot];
     if (!it || h.inventory.length >= 24) return;
     h.equip[slot] = null; h.inventory.push(it); this.recalc(); this.rebuildHeroSheet();

@@ -410,11 +410,13 @@ export class UI {
       <button class="tab x" data-act="close">✕</button></div>`;
   }
   itemHtml(it, ctx) {
-    const cls = `item r-${it.rarity}`;
-    return `<div class="${cls}" data-act="item" data-ctx="${ctx}" data-id="${it.id}">
-      <div class="iname">${esc(it.name)}</div>
-      <div class="islot">${STR.slots[it.slot === 'ring' ? 'ring1' : it.slot]}${it.dmg ? ` · ${it.dmg[0]}–${it.dmg[1]}` : ''}${it.armor ? ` · 🛡${it.armor}` : ''}</div>
+    const req = this.g.hero.level < it.req ? `<span class="lvlreq">${it.req}</span>` : '';
+    return `<div class="cell r-${it.rarity}" data-act="item" data-ctx="${ctx}" data-id="${it.id}">
+      <img src="./assets/${esc(it.icon)}.webp" alt="" draggable="false">${req}
     </div>`;
+  }
+  emptyCell(label) {
+    return `<div class="cell empty"><span class="slotname">${label}</span></div>`;
   }
   tooltip(it, actions) {
     const st = [];
@@ -481,24 +483,21 @@ export class UI {
 
   rInventory() {
     const h = this.g.hero;
-    const slots = ['weapon', 'offhand', 'helm', 'chest', 'gloves', 'belt', 'boots', 'amulet', 'ring1', 'ring2'];
     const doll = this.heroDollUrl();
+    const S = sl => h.equip[sl] ? this.itemHtml(h.equip[sl], 'equip') : this.emptyCell(STR.slots[sl]);
     return `${this.tabs('inventory')}
-    <div class="cols">
-      <div class="equip">
-        ${doll ? `<div class="doll"><img src="${doll}" alt=""></div>` : ''}
-        <div class="h2">${STR.equipped}</div>
-        ${slots.map(sl => {
-          const it = h.equip[sl];
-          return `<div class="eslot">${STR.slots[sl]}: ${it ? this.itemHtml(it, 'equip') : '<span class="empty">—</span>'}</div>`;
-        }).join('')}
-        <div class="gold">${STR.gold}: <b>${h.gold} ✦</b></div>
-      </div>
-      <div class="bag">
-        <div class="h2">${STR.inventory} (${h.inventory.length}/24)</div>
-        <div class="grid">${h.inventory.map(it => this.itemHtml(it, 'bag')).join('') || '<span class="empty">пусто</span>'}</div>
-      </div>
-    </div><div id="ttbox"></div>`;
+    <div class="paperdoll">
+      <div class="dcol">${S('helm')}${S('weapon')}${S('gloves')}${S('ring1')}</div>
+      <div class="dollimg">${doll ? `<img src="${doll}" alt="">` : ''}</div>
+      <div class="dcol">${S('amulet')}${S('offhand')}${S('chest')}${S('ring2')}</div>
+    </div>
+    <div class="paperdoll" style="grid-template-columns:1fr;padding:6px">
+      <div class="dcol" style="flex-direction:row">${S('belt')}${S('boots')}
+        <span class="gold" style="margin-left:auto">${h.gold} <span style="color:#ffd75e">✦</span></span></div>
+    </div>
+    <div class="h2">${STR.inventory} (${h.inventory.length}/24)</div>
+    <div class="grid">${h.inventory.map(it => this.itemHtml(it, 'bag')).join('')}${Array(Math.max(0, 24 - h.inventory.length)).fill('<div class="cell empty"></div>').join('')}</div>
+    <div id="ttbox"></div>`;
   }
   rCharacter() {
     const h = this.g.hero, s = this.g.stats;
@@ -537,8 +536,9 @@ export class UI {
         const rank = h.talents[id] || 0;
         const locked = h.level < sk.lvl;
         const onBar = h.skillBar.indexOf(id);
+        const pips = '<span class="pips">' + '<b>' + '●'.repeat(rank) + '</b>' + '○'.repeat(5 - rank) + '</span>';
         return `<div class="talent ${locked ? 'locked' : ''} ${rank ? 'known' : ''}">
-          <div class="tname">${sk.name} <span class="trank">${rank}/5</span></div>
+          <div class="tname">${sk.name} ${pips}</div>
           <div class="tdesc">${sk.d}${sk.passive ? '' : ` · ${sk.cost || 0}⚡${sk.cd ? ` · ${sk.cd}с` : ''}`}</div>
           <div class="tdesc">${locked ? `${STR.requires} ${sk.lvl} ${STR.levelShort}` : ''}</div>
           <div>
@@ -600,18 +600,16 @@ export class UI {
     if (!g.vendorStock.length) g.restockVendor();
     return `<div class="tabs"><div class="h1">${STR.vendor}</div><button class="tab x" data-act="town">←</button></div>
     <div class="gold">${STR.gold}: <b>${h.gold} ✦</b> · <button data-act="gamble">${STR.gamble} (${GAMBLE_COST(h.level)} ✦)</button></div>
-    <div class="cols">
-      <div><div class="h2">${STR.buy}</div><div class="grid">${g.vendorStock.map(it => this.itemHtml(it, 'shop')).join('')}</div></div>
-      <div><div class="h2">${STR.sell}</div><div class="grid">${h.inventory.map(it => this.itemHtml(it, 'sellbag')).join('') || '<span class="empty">пусто</span>'}</div></div>
-    </div><div id="ttbox"></div>`;
+    <div class="h2">${STR.buy}</div><div class="grid">${g.vendorStock.map(it => this.itemHtml(it, 'shop')).join('')}</div>
+    <div class="h2">${STR.sell}</div><div class="grid">${h.inventory.map(it => this.itemHtml(it, 'sellbag')).join('') || '<span class="empty">пусто</span>'}</div>
+    <div id="ttbox"></div>`;
   }
   rStash() {
     const g = this.g, h = g.hero;
     return `<div class="tabs"><div class="h1">${STR.stash} (${g.stash.length}/48)</div><button class="tab x" data-act="town">←</button></div>
-    <div class="cols">
-      <div><div class="h2">${STR.stash}</div><div class="grid">${g.stash.map(it => this.itemHtml(it, 'stash')).join('') || '<span class="empty">пусто</span>'}</div></div>
-      <div><div class="h2">${STR.inventory}</div><div class="grid">${h.inventory.map(it => this.itemHtml(it, 'tostash')).join('') || '<span class="empty">пусто</span>'}</div></div>
-    </div><div id="ttbox"></div>`;
+    <div class="h2">${STR.stash}</div><div class="grid">${g.stash.map(it => this.itemHtml(it, 'stash')).join('')}${Array(Math.max(0, 48 - g.stash.length)).fill('<div class="cell empty"></div>').join('')}</div>
+    <div class="h2">${STR.inventory}</div><div class="grid">${h.inventory.map(it => this.itemHtml(it, 'tostash')).join('') || '<span class="empty">пусто</span>'}</div>
+    <div id="ttbox"></div>`;
   }
   rDeath() {
     return `<div class="death"><div class="h1red">${STR.youDied}</div>
