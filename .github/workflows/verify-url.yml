@@ -28,6 +28,8 @@ jobs:
             echo "font: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/fonts/forum.woff2")"
             echo "loot_icon: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/loot/coins.webp")"
             echo "npc_sheet: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/flare/n_trader.webp")"
+            echo "skill_icon: $(curl -s -o /dev/null -w '%{http_code}' -L "${URL}assets/skills/whirlwind.webp")"
+            echo "sw_version: $(curl -s -L "${URL}sw.js" | grep -o "lastcandle-v[0-9]*" | head -1)"
             echo "title_found: $(grep -c 'Последняя Свеча' /tmp/page.html || true)"
           } > game/deploy/verify-result.txt
           cat game/deploy/verify-result.txt
