@@ -11,7 +11,7 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageChops
 # единый грейдинг (план А): одна кривая контраста, приглушение пестроты,
 # тёплый сдвиг «свет свечи», лёгкий шарп и тёмный 1px контур для читаемости на тёмном полу
 WARM = (255, 214, 150)
-def grade_sheet(sheet, outline=True):
+def grade_sheet(sheet, outline=True, rim=False):
     a = sheet.getchannel('A')
     rgb = sheet.convert('RGB')
     rgb = rgb.filter(ImageFilter.UnsharpMask(radius=1.4, percent=70, threshold=2))
@@ -28,6 +28,14 @@ def grade_sheet(sheet, outline=True):
     base = Image.new('RGBA', sheet.size, (0, 0, 0, 0))
     base.alpha_composite(ol)
     base.alpha_composite(out)
+    if rim:
+        # рим-лайт по верхним кромкам: враг читается на тёмном полу
+        down = Image.new('L', mask.size, 0)
+        down.paste(mask, (0, 2))
+        top_edge = ImageChops.subtract(mask, down)
+        rim_im = Image.new('RGBA', sheet.size, (255, 232, 190, 255))
+        rim_im.putalpha(top_edge.point(lambda v: 88 if v else 0))
+        base.alpha_composite(rim_im)
     return base
 
 FLARE = os.environ.get('FLARE_DIR', '/tmp/claude-0/-home-user-artmore-card/032e5d9d-d2d3-5b78-a445-01d93e169192/scratchpad/flare-game/mods/fantasycore')
@@ -75,7 +83,7 @@ def parse_anim(txt_path):
             anims[cur]['rects'][(fi, di)] = (x, y, w, h, ox, oy, alias)
     return images, anims
 
-def bake(name, txt_rel, out_name=None, anims_keep=None, scale=SCALE, quality=82):
+def bake(name, txt_rel, out_name=None, anims_keep=None, scale=SCALE, quality=82, rim=False):
     txt_path = os.path.join(FLARE, txt_rel)
     images, anims = parse_anim(txt_path)
     srcs = {alias: Image.open(os.path.join(FLARE, p)).convert('RGBA') for alias, p in images.items()}
@@ -110,43 +118,43 @@ def bake(name, txt_rel, out_name=None, anims_keep=None, scale=SCALE, quality=82)
                 sheet.alpha_composite(crop, (max(0, px), max(0, py)))
         col += A['frames']
     out = out_name or name
-    sheet = grade_sheet(sheet)
+    sheet = grade_sheet(sheet, rim=rim)
     sheet.save(os.path.join(OUT, out + '.webp'), 'WEBP', quality=quality)
     return out, meta, sheet.size
 
-JOBS = []  # (имя, txt, out, anims_keep, scale, quality)
-# --- враги ---
+JOBS = []  # (имя, txt, out, anims_keep, scale, quality, rim)
+# --- враги (rim: читаемость на тёмном полу) ---
 for flare_name, out in [('skeleton', 'e_skeleton'), ('skeleton_mage', 'e_skeleton_mage'), ('zombie', 'e_zombie'),
                         ('goblin', 'e_goblin'), ('antlion', 'e_antlion'), ('minotaur', 'e_minotaur')]:
-    JOBS.append((flare_name, f'animations/enemies/{flare_name}.txt', out, None, ENEMY_SCALE, 80))
-JOBS.append(('wyvern_fire', 'animations/enemies/wyvern_fire.txt', 'e_wyvern', None, ENEMY_SCALE, 80))
+    JOBS.append((flare_name, f'animations/enemies/{flare_name}.txt', out, None, ENEMY_SCALE, 80, True))
+JOBS.append(('wyvern_fire', 'animations/enemies/wyvern_fire.txt', 'e_wyvern', None, ENEMY_SCALE, 80, True))
 # --- NPC города (только stance) ---
 for flare_name, out in [('wandering_trader', 'n_trader'), ('guild_man', 'n_guild'),
                         ('peasant_man1', 'n_peasant'), ('knight', 'n_knight')]:
-    JOBS.append((flare_name, f'animations/npcs/{flare_name}.txt', out, ['stance'], HERO_SCALE, 82))
+    JOBS.append((flare_name, f'animations/npcs/{flare_name}.txt', out, ['stance'], HERO_SCALE, 82, False))
 # --- герой: мужские слои ---
 MALE = ['default_feet', 'default_legs', 'default_hands', 'default_chest', 'head_short',
         'cloth_shirt', 'leather_chest', 'chain_cuirass', 'plate_cuirass', 'mage_vest',
         'leather_hood', 'chain_coif', 'plate_helm', 'buckler', 'kite_shield',
         'battle_axe', 'greatsword', 'dagger', 'staff', 'greatstaff']
 for l in MALE:
-    JOBS.append((l, f'animations/avatar/male/{l}.txt', 'm_' + l, None, HERO_SCALE, 82))
+    JOBS.append((l, f'animations/avatar/male/{l}.txt', 'm_' + l, None, HERO_SCALE, 82, False))
 # --- героиня: женские слои ---
 FEMALE = ['default_feet', 'default_legs', 'default_hands', 'default_chest', 'head_long',
           'cloth_shirt', 'leather_chest', 'chain_cuirass', 'plate_cuirass', 'mage_vest',
           'leather_hood', 'chain_coif', 'plate_helm', 'greatbow']
 for l in FEMALE:
-    JOBS.append((l, f'animations/avatar/female/{l}.txt', 'f_' + l, None, HERO_SCALE, 82))
+    JOBS.append((l, f'animations/avatar/female/{l}.txt', 'f_' + l, None, HERO_SCALE, 82, False))
 
 if __name__ == '__main__':
     only = set(sys.argv[1:])
     metas = {}
     if os.path.exists(os.path.join(OUT, 'meta.json')):
         metas = json.load(open(os.path.join(OUT, 'meta.json')))
-    for name, txt, out, keep, scale, q in JOBS:
+    for name, txt, out, keep, scale, q, rim in JOBS:
         if only and out not in only: continue
         try:
-            o, meta, size = bake(name, txt, out, keep, scale=scale, quality=q)
+            o, meta, size = bake(name, txt, out, keep, scale=scale, quality=q, rim=rim)
             metas[o] = meta
             print(f'{o}: {size[0]}x{size[1]} cell {meta["cw"]}x{meta["ch"]}')
         except FileNotFoundError as e:

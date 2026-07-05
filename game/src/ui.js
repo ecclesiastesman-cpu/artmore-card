@@ -19,8 +19,12 @@ export class UI {
     bus.on('skillUnlocked', sk => this.skillCard(sk));
     bus.on('pickupItem', (r, name) => { if (r !== 'common') this.toast(name, RC[r]); });
   }
-  // карточка нового умения (DI-стиль): по центру сверху, с иконкой
-  skillCard(sk) {
+  // карточка нового умения (DI-стиль): по центру сверху, с иконкой.
+  // В разгар боя не заслоняем телеграфы — ждём паузы (до ~8 с, потом показываем всё равно)
+  skillCard(sk, waitedMs = 0) {
+    const g = this.g;
+    const hot = g.hero.hurtT > 0 || g.mobs?.some(m => m.aggro && !m.dead && m.type !== 'ally');
+    if (hot && waitedMs < 8000) { setTimeout(() => this.skillCard(sk, waitedMs + 2000), 2000); return; }
     this.root.querySelector('.skillcard')?.remove();
     const id = Object.keys(SKILLS).find(k => SKILLS[k] === sk);
     const el = document.createElement('div');
@@ -432,7 +436,7 @@ export class UI {
     this.drawOrb(ctx, mpPos[0], mpPos[1], orbR, clamp(h.res / s.maxRes, 0, 1),
       resCol[0], resCol[1], Math.ceil(h.res), timeS, false);
     // XP: золочёный жёлоб с насечками (шире, как нижняя кромка DI)
-    const xw = W * (land ? .40 : .44), xx = W / 2 - xw / 2, xy = H - 9;
+    const xw = W * (land ? .40 : .44), xx = W / 2 - xw / 2, xy = H - 12; // зазор под home-индикатор iPhone
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.beginPath(); ctx.roundRect(xx - 2, xy - 2, xw + 4, 9, 4); ctx.fill();
     ctx.strokeStyle = 'rgba(140,109,31,0.5)'; ctx.lineWidth = 1; ctx.stroke();
