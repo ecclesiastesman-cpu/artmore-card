@@ -8,5 +8,5 @@ font: 200
 loot_icon: 200
 npc_sheet: 200
 skill_icon: 200
-sw_version: lastcandle-v20
+sw_version: lastcandle-v21
 title_found: 2
