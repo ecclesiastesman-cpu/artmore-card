@@ -7,4 +7,6 @@ flare_sheet: 200
 font: 200
 loot_icon: 200
 npc_sheet: 200
+skill_icon: 200
+sw_version: lastcandle-v11
 title_found: 2
