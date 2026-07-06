@@ -568,6 +568,13 @@ export class UI {
         } else if (usable) { // готово: тонкое свечение
           ctx.strokeStyle = 'rgba(255,215,120,0.35)'; ctx.lineWidth = 1.6;
           ctx.beginPath(); ctx.arc(pos.x, pos.y, 27.5, 0, 7); ctx.stroke();
+        } else if ((SKILLS[id]?.cost || 0) > g.hero.res) { // нет ресурса: синяя приглушёнка + цена (DI)
+          ctx.fillStyle = 'rgba(40,70,140,0.38)';
+          ctx.beginPath(); ctx.arc(pos.x, pos.y, 25, 0, 7); ctx.fill();
+          ctx.fillStyle = '#9fc4ff'; ctx.font = 'bold 13px Georgia'; ctx.textAlign = 'center';
+          ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3;
+          ctx.strokeText(SKILLS[id].cost, pos.x, pos.y + 4);
+          ctx.fillText(SKILLS[id].cost, pos.x, pos.y + 4);
         }
         ctx.globalAlpha = 1;
       });

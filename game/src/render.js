@@ -799,9 +799,9 @@ export class Renderer {
       const pop = n.t > .68 ? 1.55 - (0.8 - n.t) * 4.6 : 1;
       ctx.translate(n.x, n.y);
       ctx.scale(pop, pop);
-      ctx.font = (n.big ? 'bold 26px' : 'bold 16px') + ' Georgia, serif';
+      ctx.font = (n.big ? 'bold 28px' : 'bold 19px') + ' Georgia, serif';
       ctx.textAlign = 'center';
-      ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = n.big ? 4.5 : 3.2; ctx.strokeText(n.txt, 0, 0);
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = n.big ? 5 : 3.6; ctx.strokeText(n.txt, 0, 0);
       ctx.fillStyle = n.c; ctx.fillText(n.txt, 0, 0);
       ctx.restore();
     }

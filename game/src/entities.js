@@ -62,7 +62,7 @@ export function damageMob(g, m, raw, opts = {}) {
   if (opts.root && !m.boss) m.rootT = Math.max(m.rootT, opts.root);
   if (opts.dot) m.dots.push({ dps: opts.dot, t: opts.dotT || 4, elem: opts.elem || 'poison' });
   bus.emit('hit', m, dmg, opts);
-  g.fx.number(m.x, m.y - m.r - 6, Math.round(dmg), opts.crit ? '#ffd75e' : opts.elem ? ({ fire: '#ff7043', cold: '#4fc3f7', light: '#b388ff', poison: '#9ccc65' })[opts.elem] : '#eee', opts.crit);
+  g.fx.number(m.x, m.y - m.r - 6, Math.round(dmg), opts.crit ? '#ffd75e' : opts.elem ? ({ fire: '#ff7043', cold: '#4fc3f7', light: '#b388ff', poison: '#9ccc65' })[opts.elem] : '#fff2d8', opts.crit);
   if (m.hp <= 0) killMob(g, m);
 }
 
