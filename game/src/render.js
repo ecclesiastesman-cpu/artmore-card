@@ -442,7 +442,9 @@ export class Renderer {
       ctx.beginPath(); ctx.ellipse(0, 5, 17, 7, 0, 0, 7); ctx.fill();
       if (h.hurtT > 0) ctx.globalAlpha = .6 + Math.sin(timeS * 60) * .3;
       const anim = h.dead ? 'die' : h.action ? h.action.name : h.moving ? 'run' : 'stance';
-      const t = h.dead ? h.deadT * 1000 : h.action ? h.action.t * (h.action.rate || 1) : h.animT * 1000;
+      // цикл бега масштабируется от скорости движения (базовая 150) — ноги не скользят
+      const t = h.dead ? h.deadT * 1000 : h.action ? h.action.t * (h.action.rate || 1)
+        : h.animT * 1000 * (h.moving ? (g.stats?.moveSpeed || 150) / 150 : 1);
       // редкость оружия — свечение под ногами
       const wr = h.equip.weapon?.rarity;
       if (wr && wr !== 'common' && wr !== 'magic') {

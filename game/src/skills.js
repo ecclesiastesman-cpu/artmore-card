@@ -10,7 +10,8 @@ export function skillRank(hero, id) { return hero.talents[id] || 0; }
 // под скорость атаки — быстрые билды ускоряют анимацию, а не режут её кадры
 function mkAction(g, name, atkSpeed) {
   const dur = g.flare?.heroSheet?.meta?.anims?.[name]?.dur ?? 520;
-  const rate = Math.max(1, dur * (atkSpeed || 1) / 1000);
+  // потолок ×3: на пределе скорости атаки замах остаётся различимым
+  const rate = Math.max(1, Math.min(3, dur * (atkSpeed || 1) / 1000));
   return { name, t: 0, dur, rate };
 }
 export function skillDmg(g, sk, rank) {
