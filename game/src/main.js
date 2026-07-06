@@ -571,7 +571,7 @@ class Game {
     }
     if (h.dead) { h.deadT = (h.deadT || 0) + dt; return; }
     h.animT += dt;
-    if (h.action) { h.action.t += dt * 1000; if (h.action.t > 520) h.action = null; }
+    if (h.action) { h.action.t += dt * 1000; if (h.action.t > (h.action.dur || 520) / (h.action.rate || 1)) h.action = null; }
     if (h.attackCd > 0) h.attackCd -= dt;
     if (h.attackT > 0) h.attackT -= dt;
     if (h.hurtT > 0) h.hurtT -= dt;
@@ -591,7 +591,8 @@ class Game {
     h.moving = ml > .05;
     if (h.moving) {
       if (ml > 1) { mx /= ml; my /= ml; }
-      if (!h.action) h.faceAngle = Math.atan2(my, mx); // экранный угол стика
+      // экранный угол стика; после кадра контакта удара поворот снова разрешён
+      if (!h.action || h.action.t > (h.action.dur || 520) / (h.action.rate || 1) * .45) h.faceAngle = Math.atan2(my, mx);
       if (mx) h.dir = mx < 0 ? -1 : 1;
       const [wx, wy] = unprojDir(mx, my); // экран -> мир
       h.faceX = wx; h.faceY = wy;
