@@ -238,7 +238,10 @@ export function updateMob(g, m, dt) {
     if (m.lunge && d < 200 && d > 70 && m.cd <= 0) { m.vx = dx / d * 520; m.vy = dy / d * 520; m.lungeT = .25; m.cd = 2.5; }
     if (m.lungeT > 0) { m.lungeT -= dt; moveMob(g, m, m.vx / 520, m.vy / 520, 520, dt); }
     else if (d > m.r + 16) moveMob(g, m, dx / d, dy / d, sp, dt);
-    if (d < m.r + 26 && m.cd <= 0) {
+    // слот-лимит: не больше 3 одновременных замахов по герою — всегда есть окно уворота
+    if (d < m.r + 26 && m.cd <= 0 && g.mobs.reduce((n, o) => n + (o.windup > 0 && !o.dead ? 1 : 0), 0) >= 3) {
+      m.cd = .3 + g.rng.range(0, .4);
+    } else if (d < m.r + 26 && m.cd <= 0) {
       // замах 0.42с с красным сектором — можно выйти из-под удара
       m.cd = 1.25;
       m.windup = .48;

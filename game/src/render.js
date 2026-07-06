@@ -672,12 +672,12 @@ export class Renderer {
         ctx.beginPath(); ctx.arc(0, 0, tg.r * f, 0, 7); ctx.fill();
         ctx.globalAlpha = .8; ctx.strokeStyle = '#ff5546'; ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.arc(0, 0, tg.r, 0, 7); ctx.stroke();
-      } else { // сектор удара
+      } else { // сектор удара (мягкая заливка: перекрытия в толпе не сливаются в пятно)
         const a0 = tg.angle - tg.spread / 2, a1 = tg.angle + tg.spread / 2;
-        ctx.globalAlpha = .2;
+        ctx.globalAlpha = .12;
         ctx.fillStyle = '#c62828';
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, tg.r, a0, a1); ctx.closePath(); ctx.fill();
-        ctx.globalAlpha = .4;
+        ctx.globalAlpha = .28;
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, tg.r * f, a0, a1); ctx.closePath(); ctx.fill();
         ctx.globalAlpha = .75; ctx.strokeStyle = '#ff5546'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, tg.r, a0, a1); ctx.closePath(); ctx.stroke();
