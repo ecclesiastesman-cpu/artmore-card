@@ -53,7 +53,7 @@ export class Renderer {
     this.canvas.style.width = innerWidth + 'px'; this.canvas.style.height = innerHeight + 'px';
     this.ctx.imageSmoothingQuality = 'high';
     this.lightCanvas.width = Math.ceil(innerWidth / 4); this.lightCanvas.height = Math.ceil(innerHeight / 4);
-    this.zoom = clamp(Math.min(innerWidth, innerHeight) / 760, .5, .95);
+    this.zoom = clamp(Math.min(innerWidth, innerHeight) / 700, .56, .95); // герой крупнее на телефоне (DI-аудит)
   }
   // предзапечённое радиальное свечение (замена shadowBlur в горячих циклах)
   glowSprite(color) {

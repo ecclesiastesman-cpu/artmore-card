@@ -140,6 +140,9 @@ class Game {
     const baseW = { barbarian: 'axe', huntress: 'bow', mage: 'staff', warlock: 'scythe', druid: 'staff' }[cls];
     const it = makeItem(this.rng, 1, { base: baseW, rarity: 'common' });
     this.hero.equip.weapon = it;
+    // стартовый нагрудник: кукла одета с 1 уровня (DI-аудит «голый герой»)
+    const baseC = (cls === 'mage' || cls === 'warlock') ? 'robe' : 'plate';
+    this.hero.equip.chest = makeItem(this.rng, 1, { base: baseC, rarity: 'common' });
     this.cls = CLASSES[cls];
     unlockSkills(this);
     this.recalc();
