@@ -163,7 +163,7 @@ export class Flare {
 
   // ---- v25: кукла из Blender-слоёв (body + chest_tX + helm_tX + weapon) ----
   // реестр выложенных классов: не трогаем сеть (и консоль 404-ами), пока ассетов нет
-  static B25 = new Set(['barbarian']);
+  static B25 = new Set(['barbarian', 'huntress', 'mage', 'warlock', 'druid']);
   async b25Meta(cls) {
     if (!Flare.B25.has(cls)) return null;
     this._b25 = this._b25 || new Map();
