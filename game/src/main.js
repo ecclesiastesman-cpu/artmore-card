@@ -964,6 +964,7 @@ class Game {
       else if (e.kind === 'mob') r.drawMob(this, e.m, timeS);
       else r.drawHero(this, timeS);
     }
+    r.drawHeroXray(this, timeS); // герой просвечивает сквозь стены + подсветка в толпе
     r.drawEffects(this, 1 / 60, timeS);
     r.drawLight(this, timeS); // включает restore из мировых координат
     this.ui.drawHud(ctx, this, this.input);
