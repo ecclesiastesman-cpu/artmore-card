@@ -226,6 +226,7 @@ class Game {
     h.dead = false; h.deadT = 0;
     this.mobs = []; this.projectiles = []; this.zones = []; this.traps = []; this.drops = []; this.corpses = [];
     this.telegraphs = [];
+    this.pendingStrikes = [];
     this.siege = null;
     this.chestObjs = [];
     this.townMode = true;
@@ -303,6 +304,7 @@ class Game {
     this.townMode = false;
     this.dungeonCtx = null;
     this.telegraphs = [];
+    this.pendingStrikes = [];
     const [cpx, cpy] = proj(this.hero.x, this.hero.y);
     this.renderer.cam.px = cpx; this.renderer.cam.py = cpy;
     bus.emit('portal');
@@ -342,6 +344,7 @@ class Game {
     h.dead = false;
     this.mobs = []; this.projectiles = []; this.zones = []; this.traps = []; this.drops = []; this.corpses = [];
     this.telegraphs = [];
+    this.pendingStrikes = [];
     // предзагрузка листов монстров акта + слуг
     if (this.flare?.meta) {
       const names = new Set(['e_skeleton', 'e_wyvern']);
@@ -565,6 +568,14 @@ class Game {
     if (this.hitStop > 0) { this.hitStop -= dt; return; }
     const h = this.hero, s = this.stats;
     // телеграфы атак: по истечении замаха — применить удар
+    // отложенные удары героя: срабатывают в кадре контакта замаха (DI-вес)
+    if (this.pendingStrikes) {
+      if (h.dead) this.pendingStrikes.length = 0;
+      else for (let i = this.pendingStrikes.length - 1; i >= 0; i--) {
+        const st = this.pendingStrikes[i]; st.t += dt;
+        if (st.t >= st.at) { this.pendingStrikes.splice(i, 1); st.run(); }
+      }
+    }
     if (this.telegraphs) for (let i = this.telegraphs.length - 1; i >= 0; i--) {
       const tg = this.telegraphs[i];
       tg.t += dt;
