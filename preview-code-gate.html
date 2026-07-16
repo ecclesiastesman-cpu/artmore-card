@@ -81,6 +81,7 @@
   p.lead { margin:0; max-width:360px; color:var(--muted); font-size:clamp(13px,1.6vw,16px); line-height:1.5; font-weight:520; }
 
   .card { background:rgba(255,255,255,.76); border:1px solid rgba(255,255,255,.9); border-radius:22px; padding:14px; box-shadow:0 16px 40px rgba(28,24,18,.09); }
+  .card, .social-block { max-width:420px; }
 
   .code-field { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
   .code-field label { font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
@@ -109,8 +110,6 @@
     display:flex; align-items:center; justify-content:center; text-decoration:none; gap:8px;
   }
   .cta-primary:hover { filter:brightness(1.08); }
-  .cta-fallback { display:block; text-align:center; margin-top:10px; font-size:11px; color:var(--muted); text-decoration:underline dashed; text-underline-offset:3px; }
-  .cta-fallback.pending { text-decoration:none; cursor:default; }
 
   .links-note { font-size:11px; color:#897f75; margin:2px 0 0; }
 
@@ -206,7 +205,6 @@
             <div class="card">
               <!-- Ссылка на розыгрыш действует до 01.08 — обновляет Оля, менять только href ниже -->
               <a class="cta-primary" href="https://t.me/artemania_officiall/5797" target="_blank" rel="noopener noreferrer">🎁 Участвовать в розыгрыше</a>
-              <span class="cta-fallback pending">Резервная ссылка — скоро (ждём от Оли)</span>
             </div>
 
             <p class="links-note">Мы вообще-то много где есть.</p>
