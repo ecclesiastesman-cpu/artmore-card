@@ -97,6 +97,7 @@
   .code-hint { font-size:10.5px; color:var(--muted); text-align:right; }
 
   .btn-main { width:100%; min-height:52px; border:0; border-radius:999px; background:var(--black); color:#fff; font:800 15px/1 inherit; cursor:pointer; box-shadow:inset 0 -1px 0 rgba(255,255,255,.13), 0 14px 28px rgba(24,20,15,.2); transition: transform .15s ease; }
+  .btn-main:disabled { opacity:.6; cursor:default; }
   .btn-main:hover { transform: translateY(-1px); }
   .btn-main:active { transform: translateY(1px) scale(.99); }
   .btn-main.shake { animation: shake .4s; }
@@ -179,11 +180,11 @@
             <div class="card">
               <div class="code-field">
                 <label>Код с карточки</label>
-                <input type="text" id="codeInput" inputmode="numeric" maxlength="10" placeholder="5480426538" autocomplete="off" />
+                <input type="text" id="codeInput" inputmode="numeric" maxlength="11" placeholder="5480426538" autocomplete="off" />
                 <div class="code-hint"><span id="codeCount">0</span>/10</div>
               </div>
               <button type="button" class="btn-main" id="submitBtn" onclick="trySubmit()">🔓 Проверить код</button>
-              <div class="err-msg" id="errMsg">Похоже, это не тот код. Должно быть 10 цифр.</div>
+              <div class="err-msg" id="errMsg">Похоже, это не тот код. Проверьте цифры на карточке.</div>
             </div>
           </div>
         </div>
@@ -249,18 +250,51 @@
     count.textContent = String(input.value.length);
   });
 
-  function trySubmit() {
+  const CHECK_URL = 'https://bot.artmore.company:8443/qr-check';
+
+  function shakeError(text) {
     const btn = document.getElementById('submitBtn');
     const err = document.getElementById('errMsg');
-    if (input.value.length !== 10) {
-      err.classList.add('show');
-      btn.classList.remove('shake');
-      void btn.offsetWidth;
-      btn.classList.add('shake');
+    err.textContent = text;
+    err.classList.add('show');
+    btn.classList.remove('shake');
+    void btn.offsetWidth;
+    btn.classList.add('shake');
+  }
+
+  async function trySubmit() {
+    const btn = document.getElementById('submitBtn');
+    const err = document.getElementById('errMsg');
+    const len = input.value.length;
+
+    if (len !== 8 && len !== 10) {
+      shakeError('Похоже, это не тот код. Проверьте цифры на карточке.');
       return;
     }
+
     err.classList.remove('show');
-    showScreen(2);
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Проверяем…';
+
+    try {
+      const res = await fetch(CHECK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: input.value })
+      });
+      const data = await res.json();
+      if (data.valid) {
+        showScreen(2);
+      } else {
+        shakeError('Такой код не найден. Проверьте, всё ли верно введено.');
+      }
+    } catch (e) {
+      shakeError('Не получилось проверить код. Проверьте связь и попробуйте ещё раз.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
   }
 </script>
 </body>
